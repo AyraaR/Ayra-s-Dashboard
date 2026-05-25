@@ -9,6 +9,8 @@ function loadBooks() {
         readBooks = userData.books || [];
     }
     renderBooks();
+    // Actualizar widget de la home si existe la función
+    if (window.updatePreviews) window.updatePreviews();
 }
 
 function saveBooks() {
@@ -18,6 +20,21 @@ function saveBooks() {
         userData.books = readBooks;
         saveUserData(userData);
         if (window.updatePreviews) window.updatePreviews();
+    }
+}
+
+// Función para obtener portada de un libro (usada por el widget)
+async function getBookCover(title) {
+    try {
+        const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=1`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.docs && data.docs[0] && data.docs[0].cover_i) {
+            return `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-S.jpg`;
+        }
+        return null;
+    } catch (e) {
+        return null;
     }
 }
 
@@ -33,14 +50,10 @@ async function searchBooks() {
     resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-pulse"></i> Buscando libros...</div>';
     
     try {
-        // Usando OpenLibrary API (sin problemas CORS)
         const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10&fields=key,title,author_name,first_publish_year,cover_i,isbn`;
-        console.log('Buscando en:', url);
         
         const response = await fetch(url);
         const data = await response.json();
-        
-        console.log('Respuesta:', data);
         
         if (!data.docs || data.docs.length === 0) {
             resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;">📚 No se encontraron libros. Prueba con otro título.</div>';
@@ -192,3 +205,4 @@ window.moveToRead = moveToRead;
 window.removeFromToRead = removeFromToRead;
 window.removeFromRead = removeFromRead;
 window.searchBooks = searchBooks;
+window.getBookCover = getBookCover;

@@ -2,7 +2,6 @@ function updateStats() {
     const userData = getUserData();
     if (!userData) return;
     
-    // Datos
     const booksRead = userData.books || [];
     const booksToRead = userData.toReadBooks || [];
     const seriesWatched = userData.series?.watched || [];
@@ -11,19 +10,26 @@ function updateStats() {
     const shoppingCompleted = shoppingItems.filter(i => i.completed).length;
     const shoppingPending = shoppingItems.filter(i => !i.completed).length;
     
-    // Work settings
-    const workSettings = userData.workSettings || {};
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    let weeklyTotal = 0;
-    days.forEach((day, idx) => {
-        const dayConfig = workSettings[day];
-        if (dayConfig?.isVacation) weeklyTotal += 8;
-        else if (dayConfig?.isTelework) weeklyTotal += idx === 4 ? 8 : 9;
-        else if (dayConfig?.customHours) weeklyTotal += dayConfig.customHours;
-        else weeklyTotal += 8;
-    });
-    const remaining = Math.max(0, 40 - weeklyTotal);
-    const todayHours = typeof calculateTodayHours === 'function' ? calculateTodayHours() : 0;
+    // Calcular horas REALES acumuladas (no planificadas)
+    let accumulatedHours = 0;
+    const currentDayIdx = getCurrentDayIndex();
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const settings = userData.workSettings || {};
+    
+    for (let i = 0; i < currentDayIdx; i++) {
+        const dayId = dayNames[i];
+        const dayConfig = settings[dayId] || {};
+        if (dayConfig.isVacation) accumulatedHours += 8;
+        else if (dayConfig.isTelework) accumulatedHours += i === 4 ? 8 : 9;
+        else if (dayConfig.customHours) accumulatedHours += dayConfig.customHours;
+        else accumulatedHours += 8;
+    }
+    accumulatedHours += calculateTodayHours();
+    accumulatedHours = Math.round(accumulatedHours * 10) / 10;
+    
+    const remaining = Math.max(0, 40 - accumulatedHours);
+    const percent = Math.min(100, (accumulatedHours / 40) * 100);
+    const todayHours = calculateTodayHours();
     
     // Global stats
     document.getElementById('globalBooks').innerText = booksRead.length;
@@ -31,12 +37,12 @@ function updateStats() {
     document.getElementById('globalPending').innerText = booksToRead.length + seriesPending.length;
     document.getElementById('globalShopping').innerText = shoppingPending;
     
-    // Work stats
-    document.getElementById('workWeekly').innerText = weeklyTotal.toFixed(1);
+    // Work stats (CORREGIDO)
+    document.getElementById('workWeekly').innerText = accumulatedHours.toFixed(1);
     document.getElementById('workToday').innerText = todayHours.toFixed(1);
     document.getElementById('workRemaining').innerText = remaining.toFixed(1);
     const workProgress = document.getElementById('workProgress');
-    if (workProgress) workProgress.style.width = Math.min(100, (weeklyTotal / 40) * 100) + '%';
+    if (workProgress) workProgress.style.width = percent + '%';
     
     // Detail stats
     document.getElementById('detailBooksRead').innerText = booksRead.length;
@@ -55,31 +61,14 @@ function updateStats() {
         let html = '';
         days.forEach((day, idx) => {
             let hours = 0;
-            const dayConfig = workSettings[day];
-            if (dayConfig?.isVacation) hours = 8;
-            else if (dayConfig?.isTelework) hours = idx === 4 ? 8 : 9;
-            else if (dayConfig?.customHours) hours = dayConfig.customHours;
-            else hours = 8;
-            html += `<div class="category-item"><strong>${dayNames[idx]}</strong><br>${hours} horas</div>`;
+            const dayConfig = settings[day.id] || {};
+            if (dayConfig.isVacation) hours = 8;
+            else if (dayConfig.isTelework) hours = idx === 4 ? 8 : 9;
+            else if (dayConfig.customHours) hours = dayConfig.customHours;
+            else if (idx < currentDayIdx) hours = 8;
+            else hours = '?';
+            html += `<div class="category-item"><strong>${dayNames[idx]}</strong><br>${typeof hours === 'number' ? hours + 'h' : hours}</div>`;
         });
         distributionDiv.innerHTML = html;
     }
 }
-
-function initDockActive() {
-    const currentPage = window.location.pathname.split('/').pop();
-    document.querySelectorAll('.dock-item').forEach(item => {
-        const page = item.getAttribute('data-page');
-        item.classList.remove('active');
-        if (page === 'stats' && currentPage === 'stats.html') item.classList.add('active');
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    if (!isAuthenticated()) { window.location.href = '../index.html'; return; }
-    const user = getCurrentUser();
-    if (user && document.getElementById('userName')) document.getElementById('userName').innerText = user.username;
-    updateStats();
-    initDockActive();
-    document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
-});

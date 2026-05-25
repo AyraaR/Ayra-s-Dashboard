@@ -45,7 +45,7 @@ function addWorkout() {
     const intensity = document.getElementById('intensitySelect').value;
     
     const intensityMultiplier = intensity === 'bajo' ? 1 : intensity === 'medio' ? 2 : 3;
-    const fatigueGain = intensityMultiplier * 15; // 15%, 30%, 45%
+    const fatigueGain = intensityMultiplier * 15;
     
     const newFatigue = Math.min(100, (muscleStatus[exercise].fatigue || 0) + fatigueGain);
     muscleStatus[exercise] = {
@@ -61,7 +61,7 @@ function addWorkout() {
         fatigueGain: fatigueGain
     });
     
-    // Reducir fatiga de otros músculos (descanso natural)
+    // Reducir fatiga de otros músculos
     for (let m in muscleStatus) {
         if (m !== exercise && muscleStatus[m].fatigue > 0) {
             muscleStatus[m].fatigue = Math.max(0, muscleStatus[m].fatigue - 5);
@@ -84,22 +84,24 @@ function renderMuscleStats() {
         let statusText = '';
         if (fatigue >= 70) {
             statusColor = 'var(--danger)';
-            statusText = '🔴 Descanso necesario';
+            statusText = '🔴 Descanso';
         } else if (fatigue >= 40) {
             statusColor = 'var(--warning)';
             statusText = '🟡 Moderado';
         } else {
             statusColor = 'var(--success)';
-            statusText = '🟢 Listo para entrenar';
+            statusText = '🟢 Listo';
         }
         
         return `
-            <div class="stat-card">
-                <div class="stat-number" style="color: ${statusColor}; font-size: 1.5rem;">${fatigue}%</div>
-                <div class="stat-label">${muscleNames[muscle]}</div>
-                <div class="stat-progress" style="margin-top: 10px;"><div class="stat-progress-fill" style="width: ${fatigue}%; background: ${statusColor};"></div></div>
+            <div style="min-width: 140px; background: rgba(0,0,0,0.3); border-radius: 20px; padding: 15px; text-align: center;">
+                <div style="font-size: 1.8rem; font-weight: 700; color: ${statusColor};">${fatigue}%</div>
+                <div style="font-size: 0.9rem; margin: 5px 0;">${muscleNames[muscle]}</div>
+                <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin: 10px 0;">
+                    <div style="width: ${fatigue}%; height: 100%; background: ${statusColor}; border-radius: 10px;"></div>
+                </div>
                 <small style="color: ${statusColor};">${statusText}</small>
-                ${data.lastWorkout ? `<small style="display: block; margin-top: 5px;">📅 ${new Date(data.lastWorkout).toLocaleDateString()}</small>` : ''}
+                ${data.lastWorkout ? `<small style="display: block; margin-top: 5px; font-size: 0.65rem;">📅 ${new Date(data.lastWorkout).toLocaleDateString()}</small>` : ''}
             </div>
         `;
     }).join('');

@@ -99,18 +99,23 @@ async function updatePreviews() {
         if (books.length === 0) {
             booksPreview.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-book-open"></i> Añade libros leídos</div>';
         } else {
-            const previewHtml = await Promise.all(books.slice(0, 4).map(async (book) => {
+            const previewItems = await Promise.all(books.slice(0, 6).map(async (book) => {
                 let coverUrl = '';
                 try {
-                    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(book.title)}&maxResults=1`);
+                    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(book.title)}&limit=1`;
+                    const response = await fetch(url);
                     const data = await response.json();
-                    if (data.items && data.items[0]?.volumeInfo?.imageLinks?.thumbnail) {
-                        coverUrl = data.items[0].volumeInfo.imageLinks.thumbnail;
+                    if (data.docs && data.docs[0] && data.docs[0].cover_i) {
+                        coverUrl = `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-S.jpg`;
                     }
-                } catch(e) {}
-                return `<div class="preview-item">${coverUrl ? `<img src="${coverUrl}" onerror="this.src=''">` : '<i class="fas fa-book" style="font-size: 2rem; color: var(--accent);"></i>'}<span>${escapeHtml(book.title.substring(0, 15))}</span></div>`;
+                } catch(e) { console.log('Error fetching cover:', e); }
+                
+                return `<div class="preview-item">
+                            ${coverUrl ? `<img src="${coverUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 8px;">` : '<i class="fas fa-book" style="font-size: 2rem; color: var(--accent);"></i>'}
+                            <span>${escapeHtml(book.title.substring(0, 15))}</span>
+                        </div>`;
             }));
-            booksPreview.innerHTML = previewHtml.join('');
+            booksPreview.innerHTML = `<div style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0;">${previewItems.join('')}</div>`;
         }
     }
     
@@ -121,7 +126,7 @@ async function updatePreviews() {
         if (watched.length === 0) {
             seriesPreview.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-tv"></i> Añade series vistas</div>';
         } else {
-            const previewHtml = await Promise.all(watched.slice(0, 4).map(async (series) => {
+            const previewItems = await Promise.all(watched.slice(0, 6).map(async (series) => {
                 let posterUrl = '';
                 try {
                     const response = await fetch(`https://api.themoviedb.org/3/search/tv?api_key=d9940498503065e949b5ee26c152eaa1&query=${encodeURIComponent(series.title)}`);
@@ -129,10 +134,14 @@ async function updatePreviews() {
                     if (data.results && data.results[0]?.poster_path) {
                         posterUrl = `https://image.tmdb.org/t/p/w92${data.results[0].poster_path}`;
                     }
-                } catch(e) {}
-                return `<div class="preview-item">${posterUrl ? `<img src="${posterUrl}" onerror="this.src=''">` : '<i class="fas fa-tv" style="font-size: 2rem; color: var(--accent);"></i>'}<span>${escapeHtml(series.title.substring(0, 15))}</span></div>`;
+                } catch(e) { console.log('Error fetching poster:', e); }
+                
+                return `<div class="preview-item">
+                            ${posterUrl ? `<img src="${posterUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 8px;">` : '<i class="fas fa-tv" style="font-size: 2rem; color: var(--accent);"></i>'}
+                            <span>${escapeHtml(series.title.substring(0, 15))}</span>
+                        </div>`;
             }));
-            seriesPreview.innerHTML = previewHtml.join('');
+            seriesPreview.innerHTML = `<div style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0;">${previewItems.join('')}</div>`;
         }
     }
     
