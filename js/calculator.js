@@ -1,3 +1,39 @@
+// Nueva variable para hora de salida manual
+let manualExitTime = null;
+
+function setManualExitTime() {
+    const time = document.getElementById('manualExitTime').value;
+    if (time) {
+        manualExitTime = time;
+        showToast(`⏰ Hora de salida manual establecida: ${time}`);
+    } else {
+        manualExitTime = null;
+        showToast(`⏰ Hora de salida manual eliminada`);
+    }
+    renderTable();
+    updateSummary();
+}
+
+// Modificar calculateExitTime para usar hora manual si existe
+function calculateExitTime(dayId, dayIndex, startTime, hours) {
+    // Si hay hora manual para hoy, usarla
+    if (manualExitTime && dayIndex === getCurrentDayIndex()) {
+        return manualExitTime;
+    }
+    
+    if (hours <= 0 || !startTime) return '--:--';
+    const [sH, sM] = startTime.split(':').map(Number);
+    const hasLunch = dayIndex !== 4;
+    let totalMinutes = (sH * 60 + sM) + (hours * 60);
+    if (hasLunch) totalMinutes += 30;
+    
+    const minExitMinutes = 16 * 60 + 30;
+    if (totalMinutes < minExitMinutes) totalMinutes = minExitMinutes;
+    
+    const exitHour = Math.floor(totalMinutes / 60);
+    const exitMin = totalMinutes % 60;
+    return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
+}
 const days = [
     { id: 'monday', name: 'Lunes', index: 0 },
     { id: 'tuesday', name: 'Martes', index: 1 },

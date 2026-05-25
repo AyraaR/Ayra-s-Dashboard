@@ -28,11 +28,10 @@ function saveCrafts() {
     if (window.updatePreviews) window.updatePreviews();
 }
 
-// ==================== CUADROS ====================
+// ==================== CUADROS (con estado) ====================
 function addPainting() {
     const title = document.getElementById('paintingTitle').value.trim();
     const technique = document.getElementById('paintingTechnique').value.trim();
-    const date = document.getElementById('paintingDate').value;
     
     if (!title) {
         showToast('❌ Introduce un título', true);
@@ -43,20 +42,36 @@ function addPainting() {
         id: Date.now(),
         title: title,
         technique: technique || 'Sin especificar',
-        date: date || new Date().toISOString().split('T')[0],
+        status: 'progress', // 'progress' o 'finished'
+        startDate: new Date().toISOString().split('T')[0],
+        finishDate: null,
         createdAt: new Date().toISOString()
     });
     
     saveCrafts();
     renderPaintings();
     clearPaintingForm();
-    showToast(`🎨 Cuadro "${title}" añadido`);
+    showToast(`🎨 Cuadro "${title}" añadido (en progreso)`);
 }
 
 function clearPaintingForm() {
     document.getElementById('paintingTitle').value = '';
     document.getElementById('paintingTechnique').value = '';
-    document.getElementById('paintingDate').value = '';
+}
+
+function togglePaintingStatus(index) {
+    const painting = paintings[index];
+    if (painting.status === 'progress') {
+        painting.status = 'finished';
+        painting.finishDate = new Date().toISOString().split('T')[0];
+        showToast(`✅ Cuadro "${painting.title}" completado!`);
+    } else {
+        painting.status = 'progress';
+        painting.finishDate = null;
+        showToast(`🔄 Cuadro "${painting.title}" vuelto a progreso`);
+    }
+    saveCrafts();
+    renderPaintings();
 }
 
 function deletePainting(index) {
@@ -79,10 +94,17 @@ function renderPaintings() {
     
     container.innerHTML = paintings.map((painting, idx) => `
         <li style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--glass-border);">
-            <div>
-                <i class="fas fa-palette" style="color: var(--accent);"></i>
-                <strong>${escapeHtml(painting.title)}</strong><br>
-                <small>${escapeHtml(painting.technique)} · 📅 ${painting.date}</small>
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                <i class="fas ${painting.status === 'finished' ? 'fa-check-circle' : 'fa-palette'}" 
+                   style="color: ${painting.status === 'finished' ? 'var(--success)' : 'var(--accent)'}; cursor: pointer; font-size: 1.3rem;"
+                   onclick="togglePaintingStatus(${idx})"></i>
+                <div>
+                    <strong style="${painting.status === 'finished' ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${escapeHtml(painting.title)}</strong>
+                    <small style="display: block; color: var(--text-secondary);">
+                        ${escapeHtml(painting.technique)} · Inicio: ${painting.startDate}
+                        ${painting.finishDate ? ` · Fin: ${painting.finishDate}` : ''}
+                    </small>
+                </div>
             </div>
             <button onclick="deletePainting(${idx})" class="btn-danger"><i class="fas fa-trash"></i></button>
         </li>
@@ -171,42 +193,79 @@ function renderCrochet() {
     `).join('');
 }
 
-// ==================== REPOSTERÍA ====================
+// ==================== REPOSTERÍA (con libro de recetas y comentarios) ====================
 function addRecipe() {
     const name = document.getElementById('recipeName').value.trim();
     const ingredients = document.getElementById('recipeIngredients').value.trim();
     const difficulty = document.getElementById('recipeDifficulty').value;
+    const notes = document.getElementById('recipeNotes').value.trim();
     
     if (!name) {
         showToast('❌ Introduce un nombre para la receta', true);
         return;
     }
     
-    recipes.unshift({
-        id: Date.now(),
-        name: name,
-        ingredients: ingredients || 'Sin ingredientes especificados',
-        difficulty: difficulty,
-        createdAt: new Date().toISOString()
-    });
+    // Buscar si ya existe una receta con el mismo nombre
+    const existingRecipeIndex = recipes.findIndex(r => r.name.toLowerCase() === name.toLowerCase());
+    
+    if (existingRecipeIndex !== -1) {
+        // Añadir una nueva entrada (comentario) a la receta existente
+        const newEntry = {
+            date: new Date().toISOString().split('T')[0],
+            notes: notes || 'Sin comentarios',
+            ingredients: ingredients,
+            difficulty: difficulty
+        };
+        recipes[existingRecipeIndex].entries = recipes[existingRecipeIndex].entries || [];
+        recipes[existingRecipeIndex].entries.unshift(newEntry);
+        showToast(`📝 Comentario añadido a "${name}"`);
+    } else {
+        // Crear nueva receta
+        recipes.unshift({
+            id: Date.now(),
+            name: name,
+            ingredients: ingredients || 'Sin ingredientes especificados',
+            difficulty: difficulty,
+            entries: [{
+                date: new Date().toISOString().split('T')[0],
+                notes: notes || 'Primera vez haciendo esta receta',
+                ingredients: ingredients,
+                difficulty: difficulty
+            }],
+            createdAt: new Date().toISOString()
+        });
+        showToast(`🍰 Nueva receta "${name}" añadida`);
+    }
     
     saveCrafts();
     renderRecipes();
     clearRecipeForm();
-    showToast(`🍰 Receta "${name}" añadida`);
 }
 
 function clearRecipeForm() {
     document.getElementById('recipeName').value = '';
     document.getElementById('recipeIngredients').value = '';
+    document.getElementById('recipeNotes').value = '';
 }
 
 function deleteRecipe(index) {
-    if (confirm('¿Eliminar esta receta?')) {
+    if (confirm('¿Eliminar esta receta completamente?')) {
         recipes.splice(index, 1);
         saveCrafts();
         renderRecipes();
         showToast('🗑️ Receta eliminada');
+    }
+}
+
+function deleteRecipeEntry(recipeIndex, entryIndex) {
+    if (confirm('¿Eliminar este comentario?')) {
+        recipes[recipeIndex].entries.splice(entryIndex, 1);
+        if (recipes[recipeIndex].entries.length === 0) {
+            recipes.splice(recipeIndex, 1);
+        }
+        saveCrafts();
+        renderRecipes();
+        showToast('🗑️ Comentario eliminado');
     }
 }
 
@@ -219,20 +278,30 @@ function renderRecipes() {
         return;
     }
     
-    const difficultyIcon = {
-        'fácil': '🍰',
-        'medio': '🍪',
-        'difícil': '🎂'
-    };
+    const difficultyIcon = { 'fácil': '🍰', 'medio': '🍪', 'difícil': '🎂' };
     
     container.innerHTML = recipes.map((recipe, idx) => `
-        <li style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--glass-border);">
-            <div>
-                <i class="fas fa-cake-candles" style="color: var(--accent);"></i>
-                <strong>${escapeHtml(recipe.name)}</strong><br>
-                <small>${difficultyIcon[recipe.difficulty]} ${escapeHtml(recipe.difficulty)} · ${escapeHtml(recipe.ingredients.substring(0, 50))}${recipe.ingredients.length > 50 ? '...' : ''}</small>
+        <li style="padding: 12px; border-bottom: 1px solid var(--glass-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div>
+                    <i class="fas fa-cake-candles" style="color: var(--accent);"></i>
+                    <strong style="font-size: 1.1rem;">${escapeHtml(recipe.name)}</strong>
+                    <small style="margin-left: 10px;">${difficultyIcon[recipe.difficulty]} ${escapeHtml(recipe.difficulty)}</small>
+                </div>
+                <button onclick="deleteRecipe(${idx})" class="btn-danger"><i class="fas fa-trash"></i></button>
             </div>
-            <button onclick="deleteRecipe(${idx})" class="btn-danger"><i class="fas fa-trash"></i></button>
+            <div style="margin-left: 25px; border-left: 2px solid var(--accent); padding-left: 15px;">
+                ${recipe.entries.map((entry, entryIdx) => `
+                    <div style="margin-bottom: 12px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <small style="color: var(--accent);">📅 ${entry.date}</small>
+                            <button onclick="deleteRecipeEntry(${idx}, ${entryIdx})" class="btn-danger" style="padding: 2px 6px;"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <p style="margin: 5px 0; font-size: 0.85rem;">📝 ${escapeHtml(entry.notes)}</p>
+                        <small style="color: var(--text-secondary);">🍴 ${escapeHtml(entry.ingredients)}</small>
+                    </div>
+                `).join('')}
+            </div>
         </li>
     `).join('');
 }
@@ -288,4 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
 window.deletePainting = deletePainting;
 window.deleteCrochet = deleteCrochet;
 window.deleteRecipe = deleteRecipe;
+window.deleteRecipeEntry = deleteRecipeEntry;
 window.updateCrochetProgress = updateCrochetProgress;
+window.togglePaintingStatus = togglePaintingStatus;

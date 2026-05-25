@@ -84,49 +84,97 @@ body {
     cursor: pointer;
 }
 
-/* Floating Dock */
+/* Floating Dock - Versión responsive */
 .floating-dock {
     position: fixed;
-    bottom: 24px;
+    bottom: 16px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    background: rgba(28, 28, 35, 0.9);
+    background: rgba(28, 28, 35, 0.95);
     backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
-    border-radius: 44px;
-    padding: 8px 16px;
+    border-radius: 40px;
+    padding: 6px 12px;
     display: flex;
-    gap: 8px;
+    gap: 4px;
+    overflow-x: auto;
+    max-width: 95vw;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    cursor: grab;
+    user-select: none;
+    transition: all 0.2s;
+}
+
+.floating-dock::-webkit-scrollbar {
+    display: none;
+}
+
+.floating-dock:active {
+    cursor: grabbing;
 }
 
 .dock-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 8px 16px;
+    padding: 6px 10px;
     border-radius: 32px;
     text-decoration: none;
     transition: all 0.2s;
-    min-width: 65px;
+    min-width: 55px;
+    white-space: nowrap;
 }
 
 .dock-item i {
-    font-size: 1.2rem;
+    font-size: 1rem;
     color: var(--text-secondary);
+    transition: all 0.2s;
 }
 
 .dock-item span {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     color: var(--text-secondary);
+    margin-top: 2px;
+    transition: all 0.2s;
 }
 
-.dock-item:hover, .dock-item.active {
-    background: rgba(155, 77, 255, 0.2);
+.dock-item:hover {
+    background: rgba(155, 77, 255, 0.15);
+    transform: translateY(-2px);
 }
 
-.dock-item.active i, .dock-item.active span {
+.dock-item:hover i,
+.dock-item:hover span {
     color: var(--accent);
+}
+
+.dock-item.active {
+    background: rgba(155, 77, 255, 0.25);
+}
+
+.dock-item.active i,
+.dock-item.active span {
+    color: var(--accent);
+}
+
+/* Móvil muy pequeño */
+@media (max-width: 480px) {
+    .floating-dock {
+        padding: 4px 8px;
+        gap: 2px;
+    }
+    .dock-item {
+        min-width: 45px;
+        padding: 4px 8px;
+    }
+    .dock-item i {
+        font-size: 0.9rem;
+    }
+    .dock-item span {
+        font-size: 0.5rem;
+    }
 }
 
 /* Header */
@@ -503,24 +551,6 @@ body {
     .dashboard-grid {
         grid-template-columns: 1fr;
         padding: 12px;
-    }
-    
-    .floating-dock {
-        padding: 6px 12px;
-        gap: 4px;
-    }
-    
-    .dock-item {
-        padding: 6px 10px;
-        min-width: 50px;
-    }
-    
-    .dock-item i {
-        font-size: 1rem;
-    }
-    
-    .dock-item span {
-        font-size: 0.55rem;
     }
     
     .glass-header {

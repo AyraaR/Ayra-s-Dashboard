@@ -89,48 +89,71 @@ function initDraggableDock() {
     
     let isDragging = false;
     let startX;
+    let startScrollLeft;
+    let dragThreshold = 50;
     let startPage = window.location.pathname.split('/').pop();
     
     const links = Array.from(dock.querySelectorAll('.dock-item'));
     const pages = links.map(link => link.getAttribute('data-page'));
     
+    // Detectar inicio de arrastre
     dock.addEventListener('mousedown', (e) => {
         if (e.target.closest('.dock-item')) return;
         isDragging = true;
         startX = e.clientX;
+        startScrollLeft = dock.scrollLeft;
         dock.style.cursor = 'grabbing';
     });
     
     document.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
         const deltaX = e.clientX - startX;
-        if (Math.abs(deltaX) > 80) {
-            isDragging = false;
+        dock.scrollLeft = startScrollLeft - deltaX;
+    });
+    
+    document.addEventListener('mouseup', (e) => {
+        if (!isDragging) {
             dock.style.cursor = 'grab';
-            
+            return;
+        }
+        
+        const deltaX = Math.abs(e.clientX - startX);
+        isDragging = false;
+        dock.style.cursor = 'grab';
+        
+        if (deltaX > dragThreshold) {
+            const direction = e.clientX - startX > 0 ? -1 : 1;
             const currentIndex = pages.indexOf(startPage);
-            let newIndex = currentIndex;
+            let newIndex = currentIndex + direction;
             
-            if (deltaX < 0 && currentIndex < pages.length - 1) {
-                newIndex = currentIndex + 1;
-            } else if (deltaX > 0 && currentIndex > 0) {
-                newIndex = currentIndex - 1;
-            }
-            
-            if (newIndex !== currentIndex && pages[newIndex]) {
+            if (newIndex >= 0 && newIndex < pages.length) {
                 window.location.href = `${pages[newIndex]}.html`;
             }
         }
     });
     
-    document.addEventListener('mouseup', () => {
-        isDragging = false;
-        dock.style.cursor = 'grab';
-    });
-    
     dock.style.cursor = 'grab';
+    
+    // Actualizar item activo al cargar
+    function updateActiveItem() {
+        const current = window.location.pathname.split('/').pop();
+        links.forEach(link => {
+            const page = link.getAttribute('data-page');
+            if (page === current.replace('.html', '')) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+    }
+    
+    updateActiveItem();
 }
 
+// Llamar la función cuando la página carga
+document.addEventListener('DOMContentLoaded', () => {
+    initDraggableDock();
+});
 // Llamar al cargar cada página
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initDraggableDock);

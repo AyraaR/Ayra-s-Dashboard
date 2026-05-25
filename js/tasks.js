@@ -1,5 +1,6 @@
 let tasks = [];
 let taskHistory = {}; // { "2024-01-15": ["taskId1", "taskId2"] }
+let showSettings = false;
 
 function loadTasks() {
     const userData = getUserData();
@@ -8,8 +9,7 @@ function loadTasks() {
         taskHistory = userData.taskHistory || {};
     }
     generateTodayTasks();
-    renderTodayTasks();
-    renderAllTasks();
+    renderView();
     updateProductivity();
 }
 
@@ -22,6 +22,29 @@ function saveTasks() {
     }
     if (window.updateStats) window.updateStats();
     if (window.updatePreviews) window.updatePreviews();
+}
+
+function renderView() {
+    if (showSettings) {
+        document.getElementById('mainTasksView').style.display = 'none';
+        document.getElementById('settingsView').style.display = 'block';
+        renderAllTasks();
+    } else {
+        document.getElementById('mainTasksView').style.display = 'block';
+        document.getElementById('settingsView').style.display = 'none';
+        renderTodayTasks();
+    }
+}
+
+function goToSettings() {
+    showSettings = true;
+    renderView();
+}
+
+function goBackToTasks() {
+    showSettings = false;
+    renderView();
+    updateProductivity();
 }
 
 function getTodayKey() {
@@ -302,6 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initDockActive();
     document.getElementById('addTaskBtn')?.addEventListener('click', addTask);
     document.getElementById('resetTodayTasksBtn')?.addEventListener('click', resetTodayTasks);
+    document.getElementById('goToSettingsBtn')?.addEventListener('click', goToSettings);
+    document.getElementById('backToTasksBtn')?.addEventListener('click', goBackToTasks);
     document.getElementById('taskName')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
     document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
 });
@@ -310,3 +335,5 @@ window.toggleTask = toggleTask;
 window.toggleTaskActive = toggleTaskActive;
 window.deleteTask = deleteTask;
 window.getTodayCompletionRate = getTodayCompletionRate;
+window.goToSettings = goToSettings;
+window.goBackToTasks = goBackToTasks;

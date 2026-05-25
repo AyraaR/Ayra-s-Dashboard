@@ -21,6 +21,14 @@
             
             <div style="margin-bottom: 25px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px;">
                 <label style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <i class="fas fa-door-open"></i> 
+                    <input type="time" id="manualExitTime" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 40px; padding: 8px 15px; color: white;">
+                    <button id="setManualExitBtn" class="btn-secondary"><i class="fas fa-save"></i> Aplicar</button>
+                    <button id="clearManualExitBtn" class="btn-secondary"><i class="fas fa-times"></i> Limpiar</button>
+                </label>
+            </div>
+            <div style="margin-bottom: 25px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px;">
+                <label style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                     <i class="fas fa-clock"></i> 
                     <span>Hora de entrada por defecto:</span>
                     <input type="time" id="globalStartTime" value="08:30" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 40px; padding: 8px 15px; color: white;">

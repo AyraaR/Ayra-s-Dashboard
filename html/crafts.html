@@ -49,15 +49,16 @@
         <!-- SECCIÓN REPOSTERÍA -->
         <div id="bakingSection" class="glass-card" style="margin-bottom: 24px; display: none;">
             <h2><i class="fas fa-cake-candles"></i> Mis Recetas</h2>
-            <div class="add-item-form" style="margin-top: 15px;">
-                <input type="text" id="recipeName" placeholder="Nombre de la receta" class="glass-input">
-                <input type="text" id="recipeIngredients" placeholder="Ingredientes principales" class="glass-input">
-                <select id="recipeDifficulty" class="glass-input" style="width: auto;">
+            <div style="margin-top: 15px;">
+                <input type="text" id="recipeName" placeholder="Nombre de la receta" class="glass-input" style="width: 100%; margin-bottom: 10px;">
+                <input type="text" id="recipeIngredients" placeholder="Ingredientes principales" class="glass-input" style="width: 100%; margin-bottom: 10px;">
+                <select id="recipeDifficulty" class="glass-input" style="width: 100%; margin-bottom: 10px;">
                     <option value="fácil">🍰 Fácil</option>
                     <option value="medio">🍪 Medio</option>
                     <option value="difícil">🎂 Difícil</option>
                 </select>
-                <button id="addRecipeBtn" class="btn-primary"><i class="fas fa-plus"></i> Añadir</button>
+                <textarea id="recipeNotes" placeholder="Comentarios sobre esta preparación (cambios, resultados...)" class="glass-input" rows="3" style="width: 100%; margin-bottom: 10px;"></textarea>
+                <button id="addRecipeBtn" class="btn-primary"><i class="fas fa-save"></i> Guardar receta/comentario</button>
             </div>
             <div id="recipesList" class="items-list" style="margin-top: 20px;"></div>
         </div>
