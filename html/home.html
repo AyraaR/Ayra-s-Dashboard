@@ -89,31 +89,31 @@
             <div id="sportsPreview" class="widget-preview"></div>
             <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>
         </div>
+
         <!-- Widget Arte y Manualidades -->
         <div class="glass-card widget" data-page="crafts.html">
             <h2><i class="fas fa-palette"></i> Arte y Tareas</h2>
-            <div id="craftsPreview" class="work-summary">
-                <div class="summary-stat">
-                    <span>Cuadros pintados</span>
+            <div id="craftsPreview" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <div class="summary-stat" style="flex: 1;">
+                    <span>Cuadros</span>
                     <strong id="previewPaintings">0</strong>
                 </div>
-                <div class="summary-stat">
-                    <span>Proyectos ganchillo</span>
+                <div class="summary-stat" style="flex: 1;">
+                    <span>Ganchillo</span>
                     <strong id="previewCrochet">0</strong>
                 </div>
-                <div class="summary-stat">
+                <div class="summary-stat" style="flex: 1;">
                     <span>Recetas</span>
                     <strong id="previewRecipes">0</strong>
                 </div>
-                <div class="summary-stat">
-                    <span>Tareas pendientes</span>
+                <div class="summary-stat" style="flex: 1;">
+                    <span>Tareas</span>
                     <strong id="previewChores">0</strong>
                 </div>
             </div>
             <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>
         </div>
     </main>
-
 
     <div class="floating-dock">
         <a href="home.html" class="dock-item active" data-page="home"><i class="fas fa-home"></i><span>Inicio</span></a>
@@ -124,6 +124,7 @@
         <a href="stats.html" class="dock-item" data-page="stats"><i class="fas fa-chart-line"></i><span>Stats</span></a>
         <a href="sports.html" class="dock-item" data-page="sports"><i class="fas fa-heartbeat"></i><span>Deporte</span></a>
         <a href="nutrition.html" class="dock-item" data-page="nutrition"><i class="fas fa-apple-alt"></i><span>Comida</span></a>
+        <a href="crafts.html" class="dock-item" data-page="crafts"><i class="fas fa-palette"></i><span>Arte</span></a>
     </div>
 
     <script src="../js/auth.js"></script>

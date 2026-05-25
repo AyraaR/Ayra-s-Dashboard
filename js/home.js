@@ -221,16 +221,16 @@ async function updatePreviews() {
         }
     }
 
-        // Crafts preview
-    const previewPaintings = document.getElementById('previewPaintings');
-    const previewCrochet = document.getElementById('previewCrochet');
-    const previewRecipes = document.getElementById('previewRecipes');
-    const previewChores = document.getElementById('previewChores');
+    // Crafts preview
+        const previewPaintings = document.getElementById('previewPaintings');
+        const previewCrochet = document.getElementById('previewCrochet');
+        const previewRecipes = document.getElementById('previewRecipes');
+        const previewChores = document.getElementById('previewChores');
 
-    if (previewPaintings) previewPaintings.innerText = (userData.paintings || []).length;
-    if (previewCrochet) previewCrochet.innerText = (userData.crochetProjects || []).length;
-    if (previewRecipes) previewRecipes.innerText = (userData.recipes || []).length;
-    if (previewChores) previewChores.innerText = (userData.chores || []).filter(c => !c.completed).length;
+        if (previewPaintings) previewPaintings.innerText = (userData.paintings || []).length;
+        if (previewCrochet) previewCrochet.innerText = (userData.crochetProjects || []).length;
+        if (previewRecipes) previewRecipes.innerText = (userData.recipes || []).length;
+        if (previewChores) previewChores.innerText = (userData.chores || []).filter(c => !c.completed).length;
 }
 
 function initWidgetDoubleClick() {
