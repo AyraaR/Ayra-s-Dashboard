@@ -49,11 +49,12 @@ function updateHomeStats() {
     if (!userData) return;
     
     const workSettings = userData.workSettings || {};
-    const weeklyTotal = calculateTotalWeekHoursForHome(workSettings);
-    const percent = Math.min(100, (weeklyTotal / 40) * 100);
+    const plannedTotal = calculateTotalWeekHoursForHome(workSettings);
+    const percent = Math.min(100, (plannedTotal / 40) * 100);
     const todayHours = typeof calculateTodayHours === 'function' ? calculateTodayHours() : 0;
+    const actualAccumulated = typeof calculateActualAccumulatedHours === 'function' ? calculateActualAccumulatedHours() : 0;
     
-    // Calcular horas totales que debería haber trabajado hoy según configuración
+    // Calcular horas esperadas para hoy
     const now = new Date();
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const today = dayNames[now.getDay() - 1];
@@ -66,7 +67,7 @@ function updateHomeStats() {
         else if (dayConfig?.customHours) expectedToday = dayConfig.customHours;
     }
     
-    // Productividad = horas trabajadas / horas esperadas
+    // Productividad = horas reales / horas esperadas del día
     const productivity = expectedToday > 0 ? Math.min(100, (todayHours / expectedToday) * 100) : 0;
     
     const weeklyHoursSpan = document.getElementById('weeklyHours');
@@ -75,21 +76,18 @@ function updateHomeStats() {
     const exitTimeSpan = document.getElementById('exitTimeToday');
     const statsProductivity = document.getElementById('statsProductivity');
     
-    if (weeklyHoursSpan) weeklyHoursSpan.innerText = weeklyTotal.toFixed(1);
+    if (weeklyHoursSpan) weeklyHoursSpan.innerText = actualAccumulated.toFixed(1);
     if (todayHoursSpan) todayHoursSpan.innerText = todayHours.toFixed(1);
     if (progressFill) progressFill.style.width = percent + '%';
     if (exitTimeSpan) exitTimeSpan.innerText = calculateExitTimeForHome(workSettings);
     if (statsProductivity) statsProductivity.innerText = Math.floor(productivity);
     
-    // Estadísticas rápidas
-    const booksCount = (userData.books || []).length;
-    const watchedCount = (userData.series?.watched || []).length;
-    
     const statsBooks = document.getElementById('statsBooks');
     const statsWatched = document.getElementById('statsWatched');
-    if (statsBooks) statsBooks.innerText = booksCount;
-    if (statsWatched) statsWatched.innerText = watchedCount;
+    if (statsBooks) statsBooks.innerText = (userData.books || []).length;
+    if (statsWatched) statsWatched.innerText = (userData.series?.watched || []).length;
 }
+
 async function updatePreviews() {
     const userData = getUserData();
     if (!userData) return;

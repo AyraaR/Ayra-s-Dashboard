@@ -17,7 +17,7 @@
     <main class="calculator-container">
         <div class="glass-card">
             <h2><i class="fas fa-calendar-week"></i> Planificación Semanal</h2>
-            <p style="margin-bottom: 20px; color: var(--text-secondary);">Configura tu semana laboral. Los días de teletrabajo tienen horas fijas (L-J 9h, V 8h). Los días presenciales son flexibles y se ajustan para cumplir 40h.</p>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">Configura tu semana. Teletrabajo tiene horas fijas (L-J 9h, V 8h). Los días presenciales se ajustan automáticamente para cumplir 40h.</p>
             
             <div style="margin-bottom: 25px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px;">
                 <label style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
@@ -47,7 +47,7 @@
             <div class="weekly-summary" style="margin-top: 30px;">
                 <div class="result-box" style="background: linear-gradient(135deg, rgba(155,77,255,0.15), rgba(0,0,0,0.3));">
                     <h3>Resumen Semanal</h3>
-                    <p style="font-size: 1.2rem;">📊 Total: <strong id="totalWeekHours" style="color: var(--accent); font-size: 2rem;">0</strong> / 40 horas</p>
+                    <p style="font-size: 1.2rem;">📊 Total acumulado: <strong id="totalWeekHours" style="color: var(--accent); font-size: 2rem;">0</strong> / 40 horas</p>
                     <p>⚖️ Diferencia: <strong id="weekDifference" style="color: var(--warning);">0</strong> horas</p>
                     <div class="progress-bar" style="margin: 15px 0;"><div id="weeklyProgress" class="progress-fill" style="width: 0%;"></div></div>
                     <p id="adjustmentMsg" style="font-size: 0.9rem;"></p>
@@ -58,12 +58,12 @@
     </main>
 
     <div class="floating-dock">
-        <a href="home.html" class="dock-item" data-page="home"><i class="fas fa-home"></i><span>Inicio</span></a>
-        <a href="calculator.html" class="dock-item active" data-page="calculator"><i class="fas fa-calculator"></i><span>Horas</span></a>
-        <a href="shopping.html" class="dock-item" data-page="shopping"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
-        <a href="books.html" class="dock-item" data-page="books"><i class="fas fa-book"></i><span>Libros</span></a>
-        <a href="series.html" class="dock-item" data-page="series"><i class="fas fa-tv"></i><span>Series</span></a>
-        <a href="stats.html" class="dock-item" data-page="stats"><i class="fas fa-chart-line"></i><span>Stats</span></a>
+        <a href="home.html" class="dock-item"><i class="fas fa-home"></i><span>Inicio</span></a>
+        <a href="calculator.html" class="dock-item active"><i class="fas fa-calculator"></i><span>Horas</span></a>
+        <a href="shopping.html" class="dock-item"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
+        <a href="books.html" class="dock-item"><i class="fas fa-book"></i><span>Libros</span></a>
+        <a href="series.html" class="dock-item"><i class="fas fa-tv"></i><span>Series</span></a>
+        <a href="stats.html" class="dock-item"><i class="fas fa-chart-line"></i><span>Stats</span></a>
     </div>
 
     <script src="../js/auth.js"></script>
