@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis - Acceso</title>
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="auth-container" id="authContainer">
+        <!-- Login form -->
+        <div id="loginForm" class="glass-card auth-card">
+            <div class="logo">
+                <i class="fas fa-robot"></i>
+                <h1>Jarvis</h1>
+            </div>
+            <p class="subtitle">Tu asistente personal</p>
+            <div id="loginError" class="error-message" style="display: none;"></div>
+            <input type="text" id="loginUsername" placeholder="Usuario" class="glass-input">
+            <input type="password" id="loginPassword" placeholder="Contraseña" class="glass-input">
+            <button id="doLoginBtn" class="btn-primary">Iniciar sesión</button>
+            <div class="switch-auth">
+                ¿No tienes cuenta? <a id="showRegister">Regístrate</a>
+            </div>
+        </div>
+
+        <!-- Register form -->
+        <div id="registerForm" class="glass-card auth-card" style="display: none;">
+            <div class="logo">
+                <i class="fas fa-robot"></i>
+                <h1>Jarvis</h1>
+            </div>
+            <p class="subtitle">Crea tu cuenta</p>
+            <div id="registerError" class="error-message" style="display: none;"></div>
+            <input type="text" id="regUsername" placeholder="Usuario (mínimo 3 caracteres)" class="glass-input">
+            <input type="password" id="regPassword" placeholder="Contraseña (mínimo 4 caracteres)" class="glass-input">
+            <input type="password" id="regConfirm" placeholder="Confirmar contraseña" class="glass-input">
+            <button id="doRegisterBtn" class="btn-primary">Registrarse</button>
+            <div class="switch-auth">
+                ¿Ya tienes cuenta? <a id="showLogin">Inicia sesión</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const showRegister = document.getElementById('showRegister');
+        const showLogin = document.getElementById('showLogin');
+        const loginError = document.getElementById('loginError');
+        const registerError = document.getElementById('registerError');
+
+        showRegister.addEventListener('click', () => {
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'block';
+        });
+
+        showLogin.addEventListener('click', () => {
+            registerForm.style.display = 'none';
+            loginForm.style.display = 'block';
+        });
+
+        document.getElementById('doLoginBtn').addEventListener('click', () => {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const result = loginUser(username, password);
+            if (result.success) {
+                window.location.href = '/html/home.html';
+            } else {
+                loginError.style.display = 'block';
+                loginError.innerText = result.error;
+            }
+        });
+
+        document.getElementById('doRegisterBtn').addEventListener('click', () => {
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('regConfirm').value;
+            
+            if (password !== confirm) {
+                registerError.style.display = 'block';
+                registerError.innerText = 'Las contraseñas no coinciden';
+                return;
+            }
+            
+            const result = registerUser(username, password);
+            if (result.success) {
+                alert('Registro exitoso. Ahora inicia sesión.');
+                registerForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                document.getElementById('loginUsername').value = username;
+                registerError.style.display = 'none';
+            } else {
+                registerError.style.display = 'block';
+                registerError.innerText = result.error;
+            }
+        });
+
+        // Si ya está logueado, redirigir
+        if (isAuthenticated()) {
+            window.location.href = '/html/home.html';
+        }
+    </script>
+</body>
+</html>

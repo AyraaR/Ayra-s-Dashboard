@@ -1,0 +1,610 @@
+/* ============================================
+   VARIABLES GLOBALES - iOS 26 Glass Dark
+   ============================================ */
+:root {
+    --bg-dark: #0c0c12;
+    --glass-dark: rgba(28, 28, 35, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-highlight: rgba(255, 255, 255, 0.05);
+    --accent: #9b4dff;
+    --accent-glow: rgba(155, 77, 255, 0.25);
+    --accent-hover: #b870ff;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0b0;
+    --text-tertiary: #707080;
+    --danger: #ff5e5e;
+    --success: #4cd964;
+    --warning: #ffcc00;
+    --info: #5e5ce0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', 'Poppins', system-ui, sans-serif;
+}
+
+body {
+    background: radial-gradient(ellipse at 30% 40%, #1a1a2e, #0a0a0f);
+    min-height: 100vh;
+    color: var(--text-primary);
+}
+
+/* ============================================
+   TIPOGRAFÍA
+   ============================================ */
+body, p, h1, h2, h3, h4, span, div, label, li, a, button, input, textarea {
+    color: var(--text-primary);
+}
+
+h1 { font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; }
+h2 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-size: 1.1rem; font-weight: 500; }
+
+/* ============================================
+   GLASSMORPHISM iOS STYLE
+   ============================================ */
+.glass-card {
+    background: var(--glass-dark);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 32px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 var(--glass-highlight);
+    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1), box-shadow 0.2s;
+}
+
+.glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), inset 0 1px 0 var(--glass-highlight);
+    border-color: rgba(155, 77, 255, 0.3);
+}
+
+/* ============================================
+   INPUTS Y BOTONES
+   ============================================ */
+.glass-input {
+    width: 100%;
+    padding: 14px 18px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--glass-border);
+    border-radius: 44px;
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.glass-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), #6b2bc0);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 44px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    width: 100%;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    transform: scale(0.98);
+    box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--glass-border);
+    padding: 10px 20px;
+    border-radius: 44px;
+    color: white;
+    cursor: pointer;
+    transition: 0.2s;
+    font-weight: 500;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+    background: rgba(255, 94, 94, 0.2);
+    border: 1px solid var(--danger);
+    padding: 8px 16px;
+    border-radius: 44px;
+    color: var(--danger);
+    cursor: pointer;
+}
+
+/* ============================================
+   BARRA FLOTANTE iOS STYLE
+   ============================================ */
+.floating-dock {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: var(--glass-dark);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 44px;
+    padding: 8px 16px;
+    display: flex;
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.dock-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 32px;
+    text-decoration: none;
+    transition: all 0.2s;
+    min-width: 70px;
+    gap: 4px;
+}
+
+.dock-item i {
+    font-size: 1.3rem;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.dock-item span {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    transition: all 0.2s;
+}
+
+.dock-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dock-item:hover i,
+.dock-item:hover span {
+    color: var(--accent);
+}
+
+.dock-item.active {
+    background: rgba(155, 77, 255, 0.2);
+}
+
+.dock-item.active i,
+.dock-item.active span {
+    color: var(--accent);
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.glass-header {
+    background: var(--glass-dark);
+    backdrop-filter: blur(20px);
+    border-radius: 44px;
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+    border: 1px solid var(--glass-border);
+}
+
+.logo-small {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.logo-small i {
+    color: var(--accent);
+}
+
+.user-info {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 8px;
+    border-radius: 40px;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--danger);
+}
+
+/* ============================================
+   LOGIN / REGISTER
+   ============================================ */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.auth-card {
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+.logo i {
+    font-size: 2.5rem;
+    color: var(--accent);
+}
+
+.logo h1 {
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.switch-auth {
+    margin-top: 20px;
+    color: var(--text-secondary);
+}
+
+.switch-auth a {
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.error-message {
+    background: rgba(255, 77, 77, 0.15);
+    border-left: 3px solid var(--danger);
+    padding: 10px;
+    border-radius: 16px;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+}
+
+/* ============================================
+   DASHBOARD GRID
+   ============================================ */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 24px;
+    padding: 20px;
+}
+
+.widget {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.widget:active {
+    transform: scale(0.98);
+}
+
+.widget h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 3px solid var(--accent);
+    padding-left: 12px;
+}
+
+/* ============================================
+   RESUMEN LABORAL (HOME)
+   ============================================ */
+.work-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.summary-stat {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 24px;
+    padding: 15px;
+    text-align: center;
+}
+
+.summary-stat span {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.summary-stat strong {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.progress-bar {
+    margin-top: 10px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #c084fc);
+    border-radius: 10px;
+    transition: width 0.3s;
+}
+
+/* ============================================
+   CALCULADORA
+   ============================================ */
+.calculator-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.calculator-card {
+    margin-bottom: 24px;
+}
+
+.day-selector {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.day-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
+    padding: 10px 20px;
+    border-radius: 44px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-weight: 500;
+}
+
+.day-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.day-btn.tel-work {
+    border-left: 3px solid var(--success);
+}
+
+.day-btn.vacation {
+    border-left: 3px solid var(--warning);
+}
+
+.config-panel {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 32px;
+    padding: 24px;
+    margin-top: 20px;
+}
+
+.input-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.input-field {
+    flex: 1;
+    min-width: 150px;
+}
+
+.input-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.checkbox-group {
+    display: flex;
+    gap: 24px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.result-box {
+    margin-top: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(155, 77, 255, 0.1), rgba(0, 0, 0, 0.3));
+    border-radius: 28px;
+    text-align: center;
+}
+
+.result-box p {
+    margin: 8px 0;
+    font-size: 1.1rem;
+}
+
+.weekly-summary {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--glass-border);
+}
+
+/* ============================================
+   LISTAS (COMPRAS, LIBROS, SERIES)
+   ============================================ */
+.list-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.add-item-form {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    min-width: 250px;
+}
+
+.add-item-form input {
+    flex: 1;
+}
+
+.items-list {
+    list-style: none;
+}
+
+.items-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px;
+    border-bottom: 1px solid var(--glass-border);
+    gap: 12px;
+}
+
+.items-list li .item-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.items-list li .item-info i {
+    width: 24px;
+    color: var(--accent);
+}
+
+.items-list li .item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.completed-item .item-name {
+    text-decoration: line-through;
+    color: var(--text-tertiary);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        padding: 12px;
+    }
+    
+    .floating-dock {
+        padding: 6px 12px;
+        gap: 4px;
+    }
+    
+    .dock-item {
+        padding: 6px 12px;
+        min-width: 55px;
+    }
+    
+    .dock-item i {
+        font-size: 1rem;
+    }
+    
+    .dock-item span {
+        font-size: 0.6rem;
+    }
+    
+    .glass-header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px);}
+    to { opacity: 1; transform: translateY(0);}
+}
+
+.screen, .dashboard-grid, .list-container, .calculator-container {
+    animation: fadeIn 0.3s ease;
+}
+
+/* ============================================
+   ESTILOS ADICIONALES PARA BÚSQUEDAS
+   ============================================ */
+
+#searchResults::-webkit-scrollbar,
+#seriesSearchResults::-webkit-scrollbar {
+    width: 6px;
+}
+
+#searchResults::-webkit-scrollbar-track,
+#seriesSearchResults::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+#searchResults::-webkit-scrollbar-thumb,
+#seriesSearchResults::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 10px;
+}
+
+#tempMessage, #tempMessageSeries {
+    animation: fadeIn 0.2s ease;
+}
