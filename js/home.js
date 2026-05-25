@@ -38,10 +38,57 @@ function calculateExitTimeForHome(workSettings) {
     
     const [startHour, startMin] = actualStartTime.split(':').map(Number);
     const hasLunch = dayIndex !== 4;
-    const totalMinutes = (startHour * 60 + startMin) + (workHours * 60) + (hasLunch ? 30 : 0);
+    let totalMinutes = (startHour * 60 + startMin) + (workHours * 60) + (hasLunch ? 30 : 0);
+    const minExitMinutes = 16 * 60 + 30;
+    if (totalMinutes < minExitMinutes) totalMinutes = minExitMinutes;
     const exitHour = Math.floor(totalMinutes / 60);
     const exitMin = totalMinutes % 60;
     return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
+}
+
+function calculateTodayHoursReal() {
+    const userData = getUserData();
+    if (!userData) return 0;
+    const settings = userData.workSettings || {};
+    const now = new Date();
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const today = dayNames[now.getDay() - 1];
+    if (!today || now.getDay() === 6 || now.getDay() === 0) return 0;
+    
+    const dayIndex = dayNames.indexOf(today);
+    const dayConfig = settings[today] || {};
+    const startTime = dayConfig.customStartTime || settings.globalStartTime || '08:30';
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const currentHour = now.getHours();
+    const currentMin = now.getMinutes();
+    
+    if (currentHour < startHour || (currentHour === startHour && currentMin < startMin)) return 0;
+    
+    let workedMinutes = (currentHour - startHour) * 60 + (currentMin - startMin);
+    const hasLunch = dayIndex !== 4;
+    if (hasLunch && workedMinutes > 30) workedMinutes -= 30;
+    
+    return Math.max(0, workedMinutes / 60);
+}
+
+function calculateAccumulatedWeekHours() {
+    const userData = getUserData();
+    if (!userData) return 0;
+    const settings = userData.workSettings || {};
+    const now = new Date();
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    let accumulated = 0;
+    
+    for (let i = 0; i < now.getDay() - 1; i++) {
+        const dayId = dayNames[i];
+        const dayConfig = settings[dayId] || {};
+        if (dayConfig.isVacation) accumulated += 8;
+        else if (dayConfig.isTelework) accumulated += i === 4 ? 8 : 9;
+        else if (dayConfig.customHours) accumulated += dayConfig.customHours;
+        else accumulated += 8;
+    }
+    accumulated += calculateTodayHoursReal();
+    return Math.round(accumulated * 10) / 10;
 }
 
 function updateHomeStats() {
@@ -49,26 +96,10 @@ function updateHomeStats() {
     if (!userData) return;
     
     const workSettings = userData.workSettings || {};
-    const plannedTotal = calculateTotalWeekHoursForHome(workSettings);
-    const percent = Math.min(100, (plannedTotal / 40) * 100);
-    const todayHours = typeof calculateTodayHours === 'function' ? calculateTodayHours() : 0;
-    const actualAccumulated = typeof calculateActualAccumulatedHours === 'function' ? calculateActualAccumulatedHours() : 0;
-    
-    // Calcular horas esperadas para hoy
-    const now = new Date();
-    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const today = dayNames[now.getDay() - 1];
-    let expectedToday = 8;
-    if (today && workSettings[today]) {
-        const dayConfig = workSettings[today];
-        const dayIndex = dayNames.indexOf(today);
-        if (dayConfig?.isVacation) expectedToday = 8;
-        else if (dayConfig?.isTelework) expectedToday = dayIndex === 4 ? 8 : 9;
-        else if (dayConfig?.customHours) expectedToday = dayConfig.customHours;
-    }
-    
-    // Productividad = horas reales / horas esperadas del día
-    const productivity = expectedToday > 0 ? Math.min(100, (todayHours / expectedToday) * 100) : 0;
+    const actualAccumulated = calculateAccumulatedWeekHours();
+    const percent = Math.min(100, (actualAccumulated / 40) * 100);
+    const todayHours = calculateTodayHoursReal();
+    const exitTime = calculateExitTimeForHome(workSettings);
     
     const weeklyHoursSpan = document.getElementById('weeklyHours');
     const todayHoursSpan = document.getElementById('todayHours');
@@ -79,7 +110,20 @@ function updateHomeStats() {
     if (weeklyHoursSpan) weeklyHoursSpan.innerText = actualAccumulated.toFixed(1);
     if (todayHoursSpan) todayHoursSpan.innerText = todayHours.toFixed(1);
     if (progressFill) progressFill.style.width = percent + '%';
-    if (exitTimeSpan) exitTimeSpan.innerText = calculateExitTimeForHome(workSettings);
+    if (exitTimeSpan) exitTimeSpan.innerText = exitTime;
+    
+    // Productividad basada en lo que deberías haber trabajado hoy
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const today = dayNames[new Date().getDay() - 1];
+    let expectedToday = 8;
+    if (today && workSettings[today]) {
+        const dayConfig = workSettings[today];
+        const dayIndex = dayNames.indexOf(today);
+        if (dayConfig?.isVacation) expectedToday = 8;
+        else if (dayConfig?.isTelework) expectedToday = dayIndex === 4 ? 8 : 9;
+        else if (dayConfig?.customHours) expectedToday = dayConfig.customHours;
+    }
+    const productivity = expectedToday > 0 ? Math.min(100, (todayHours / expectedToday) * 100) : 0;
     if (statsProductivity) statsProductivity.innerText = Math.floor(productivity);
     
     const statsBooks = document.getElementById('statsBooks');
@@ -92,7 +136,7 @@ async function updatePreviews() {
     const userData = getUserData();
     if (!userData) return;
     
-    // Libros preview - SOLO 3 items, ocupando todo el ancho
+    // Libros preview
     const booksPreview = document.getElementById('booksPreview');
     if (booksPreview) {
         const books = userData.books || [];
@@ -109,7 +153,6 @@ async function updatePreviews() {
                         coverUrl = `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-M.jpg`;
                     }
                 } catch(e) {}
-                
                 return `<div style="flex: 1; text-align: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 16px; margin: 0 5px;">
                             ${coverUrl ? `<img src="${coverUrl}" style="width: 100%; max-height: 100px; object-fit: cover; border-radius: 12px;">` : '<i class="fas fa-book" style="font-size: 3rem; color: var(--accent);"></i>'}
                             <div style="font-size: 0.7rem; margin-top: 5px;">${escapeHtml(book.title.substring(0, 20))}</div>
@@ -119,7 +162,7 @@ async function updatePreviews() {
         }
     }
     
-    // Series preview - SOLO 3 items
+    // Series preview
     const seriesPreview = document.getElementById('seriesPreview');
     if (seriesPreview) {
         const watched = userData.series?.watched || [];
@@ -135,7 +178,6 @@ async function updatePreviews() {
                         posterUrl = `https://image.tmdb.org/t/p/w185${data.results[0].poster_path}`;
                     }
                 } catch(e) {}
-                
                 return `<div style="flex: 1; text-align: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 16px; margin: 0 5px;">
                             ${posterUrl ? `<img src="${posterUrl}" style="width: 100%; max-height: 100px; object-fit: cover; border-radius: 12px;">` : '<i class="fas fa-tv" style="font-size: 3rem; color: var(--accent);"></i>'}
                             <div style="font-size: 0.7rem; margin-top: 5px;">${escapeHtml(series.title.substring(0, 20))}</div>
@@ -173,11 +215,6 @@ function initDockActive() {
         const page = item.getAttribute('data-page');
         item.classList.remove('active');
         if (page === 'home' && currentPage === 'home.html') item.classList.add('active');
-        if (page === 'calculator' && currentPage === 'calculator.html') item.classList.add('active');
-        if (page === 'shopping' && currentPage === 'shopping.html') item.classList.add('active');
-        if (page === 'books' && currentPage === 'books.html') item.classList.add('active');
-        if (page === 'series' && currentPage === 'series.html') item.classList.add('active');
-        if (page === 'stats' && currentPage === 'stats.html') item.classList.add('active');
     });
 }
 
