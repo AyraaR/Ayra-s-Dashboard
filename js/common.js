@@ -82,3 +82,57 @@ function calculateActualAccumulatedHours() {
     accumulated += calculateTodayHours();
     return Math.round(accumulated * 10) / 10;
 }
+
+function initDraggableDock() {
+    const dock = document.querySelector('.floating-dock');
+    if (!dock) return;
+    
+    let isDragging = false;
+    let startX;
+    let dragThreshold = 50; // pixels para considerar cambio de página
+    let startPage = window.location.pathname.split('/').pop();
+    
+    const links = Array.from(dock.querySelectorAll('.dock-item'));
+    const pages = links.map(link => link.getAttribute('data-page'));
+    
+    dock.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.dock-item')) return; // No interferir con clicks normales
+        isDragging = true;
+        startX = e.clientX;
+        dock.style.cursor = 'grabbing';
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - startX;
+        if (Math.abs(deltaX) > dragThreshold) {
+            isDragging = false;
+            dock.style.cursor = 'grab';
+            
+            const currentIndex = pages.indexOf(startPage);
+            let newIndex = currentIndex;
+            
+            if (deltaX < 0 && currentIndex < pages.length - 1) {
+                newIndex = currentIndex + 1;
+            } else if (deltaX > 0 && currentIndex > 0) {
+                newIndex = currentIndex - 1;
+            }
+            
+            if (newIndex !== currentIndex && pages[newIndex]) {
+                window.location.href = `${pages[newIndex]}.html`;
+            }
+        }
+    });
+    
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        dock.style.cursor = 'grab';
+    });
+    
+    dock.style.cursor = 'grab';
+}
+
+// Llamar esta función después de cargar cada página
+document.addEventListener('DOMContentLoaded', () => {
+    initDraggableDock();
+});

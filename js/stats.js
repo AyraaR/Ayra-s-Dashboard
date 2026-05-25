@@ -1,3 +1,17 @@
+let statsAccumulated = 0;
+let statsRemaining = 0;
+
+function updateStatsFromCalculator(accumulated, remaining, percent) {
+    statsAccumulated = accumulated;
+    statsRemaining = remaining;
+    const workWeekly = document.getElementById('workWeekly');
+    const workRemaining = document.getElementById('workRemaining');
+    const workProgress = document.getElementById('workProgress');
+    if (workWeekly) workWeekly.innerText = accumulated.toFixed(1);
+    if (workRemaining) workRemaining.innerText = remaining.toFixed(1);
+    if (workProgress) workProgress.style.width = percent + '%';
+}
+
 function updateStats() {
     const userData = getUserData();
     if (!userData) return;
@@ -9,66 +23,78 @@ function updateStats() {
     const shoppingItems = userData.shopping || [];
     const shoppingCompleted = shoppingItems.filter(i => i.completed).length;
     const shoppingPending = shoppingItems.filter(i => !i.completed).length;
+    const workouts = userData.workouts || [];
+    const muscleStatus = userData.muscleStatus || {};
     
-    // Calcular horas REALES acumuladas (no planificadas)
-    let accumulatedHours = 0;
-    const currentDayIdx = getCurrentDayIndex();
-    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const settings = userData.workSettings || {};
+    const todayHours = typeof calculateTodayHours === 'function' ? calculateTodayHours() : 0;
     
-    for (let i = 0; i < currentDayIdx; i++) {
-        const dayId = dayNames[i];
-        const dayConfig = settings[dayId] || {};
-        if (dayConfig.isVacation) accumulatedHours += 8;
-        else if (dayConfig.isTelework) accumulatedHours += i === 4 ? 8 : 9;
-        else if (dayConfig.customHours) accumulatedHours += dayConfig.customHours;
-        else accumulatedHours += 8;
+    // Calcular fatiga media
+    let totalFatigue = 0;
+    let muscleCount = 0;
+    for (let m in muscleStatus) {
+        totalFatigue += muscleStatus[m]?.fatigue || 0;
+        muscleCount++;
     }
-    accumulatedHours += calculateTodayHours();
-    accumulatedHours = Math.round(accumulatedHours * 10) / 10;
-    
-    const remaining = Math.max(0, 40 - accumulatedHours);
-    const percent = Math.min(100, (accumulatedHours / 40) * 100);
-    const todayHours = calculateTodayHours();
+    const avgFatigue = muscleCount > 0 ? Math.round(totalFatigue / muscleCount) : 0;
     
     // Global stats
-    document.getElementById('globalBooks').innerText = booksRead.length;
-    document.getElementById('globalSeries').innerText = seriesWatched.length;
-    document.getElementById('globalPending').innerText = booksToRead.length + seriesPending.length;
-    document.getElementById('globalShopping').innerText = shoppingPending;
+    const globalBooks = document.getElementById('globalBooks');
+    const globalSeries = document.getElementById('globalSeries');
+    const globalPending = document.getElementById('globalPending');
+    const globalShopping = document.getElementById('globalShopping');
+    const globalWorkouts = document.getElementById('globalWorkouts');
+    const globalFatigue = document.getElementById('globalFatigue');
     
-    // Work stats (CORREGIDO)
-    document.getElementById('workWeekly').innerText = accumulatedHours.toFixed(1);
-    document.getElementById('workToday').innerText = todayHours.toFixed(1);
-    document.getElementById('workRemaining').innerText = remaining.toFixed(1);
-    const workProgress = document.getElementById('workProgress');
-    if (workProgress) workProgress.style.width = percent + '%';
+    if (globalBooks) globalBooks.innerText = booksRead.length;
+    if (globalSeries) globalSeries.innerText = seriesWatched.length;
+    if (globalPending) globalPending.innerText = booksToRead.length + seriesPending.length;
+    if (globalShopping) globalShopping.innerText = shoppingPending;
+    if (globalWorkouts) globalWorkouts.innerText = workouts.length;
+    if (globalFatigue) globalFatigue.innerText = avgFatigue;
+    
+    // Work stats
+    const workToday = document.getElementById('workToday');
+    if (workToday) workToday.innerText = todayHours.toFixed(1);
     
     // Detail stats
-    document.getElementById('detailBooksRead').innerText = booksRead.length;
-    document.getElementById('detailBooksToRead').innerText = booksToRead.length;
-    document.getElementById('detailBooksTotal').innerText = booksRead.length + booksToRead.length;
-    document.getElementById('detailSeriesWatched').innerText = seriesWatched.length;
-    document.getElementById('detailSeriesPending').innerText = seriesPending.length;
-    document.getElementById('detailSeriesTotal').innerText = seriesWatched.length + seriesPending.length;
-    document.getElementById('detailShoppingPending').innerText = shoppingPending;
-    document.getElementById('detailShoppingCompleted').innerText = shoppingCompleted;
+    const detailBooksRead = document.getElementById('detailBooksRead');
+    const detailBooksToRead = document.getElementById('detailBooksToRead');
+    const detailBooksTotal = document.getElementById('detailBooksTotal');
+    const detailSeriesWatched = document.getElementById('detailSeriesWatched');
+    const detailSeriesPending = document.getElementById('detailSeriesPending');
+    const detailSeriesTotal = document.getElementById('detailSeriesTotal');
+    const detailShoppingPending = document.getElementById('detailShoppingPending');
+    const detailShoppingCompleted = document.getElementById('detailShoppingCompleted');
+    const detailWorkouts = document.getElementById('detailWorkouts');
     
-    // Weekly distribution
-    const distributionDiv = document.getElementById('weeklyDistribution');
-    if (distributionDiv) {
-        const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
-        let html = '';
-        days.forEach((day, idx) => {
-            let hours = 0;
-            const dayConfig = settings[day.id] || {};
-            if (dayConfig.isVacation) hours = 8;
-            else if (dayConfig.isTelework) hours = idx === 4 ? 8 : 9;
-            else if (dayConfig.customHours) hours = dayConfig.customHours;
-            else if (idx < currentDayIdx) hours = 8;
-            else hours = '?';
-            html += `<div class="category-item"><strong>${dayNames[idx]}</strong><br>${typeof hours === 'number' ? hours + 'h' : hours}</div>`;
-        });
-        distributionDiv.innerHTML = html;
-    }
+    if (detailBooksRead) detailBooksRead.innerText = booksRead.length;
+    if (detailBooksToRead) detailBooksToRead.innerText = booksToRead.length;
+    if (detailBooksTotal) detailBooksTotal.innerText = booksRead.length + booksToRead.length;
+    if (detailSeriesWatched) detailSeriesWatched.innerText = seriesWatched.length;
+    if (detailSeriesPending) detailSeriesPending.innerText = seriesPending.length;
+    if (detailSeriesTotal) detailSeriesTotal.innerText = seriesWatched.length + seriesPending.length;
+    if (detailShoppingPending) detailShoppingPending.innerText = shoppingPending;
+    if (detailShoppingCompleted) detailShoppingCompleted.innerText = shoppingCompleted;
+    if (detailWorkouts) detailWorkouts.innerText = workouts.length;
 }
+
+function initDockActive() {
+    const currentPage = window.location.pathname.split('/').pop();
+    document.querySelectorAll('.dock-item').forEach(item => {
+        const page = item.getAttribute('data-page');
+        item.classList.remove('active');
+        if (page === 'stats' && currentPage === 'stats.html') item.classList.add('active');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (!isAuthenticated()) { window.location.href = '../index.html'; return; }
+    const user = getCurrentUser();
+    if (user && document.getElementById('userName')) document.getElementById('userName').innerText = user.username;
+    updateStats();
+    initDockActive();
+    document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
+});
+
+window.updateStatsFromCalculator = updateStatsFromCalculator;
+window.updateStats = updateStats;
