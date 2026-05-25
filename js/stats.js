@@ -28,12 +28,15 @@ function updateStats() {
     
     const todayHours = typeof calculateTodayHours === 'function' ? calculateTodayHours() : 0;
     
-    // Calcular fatiga media
+    // Calcular fatiga media de los 8 grupos principales
+    const mainMuscles = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'legs', 'core', 'cardio'];
     let totalFatigue = 0;
     let muscleCount = 0;
-    for (let m in muscleStatus) {
-        totalFatigue += muscleStatus[m]?.fatigue || 0;
-        muscleCount++;
+    for (const muscle of mainMuscles) {
+        if (muscleStatus[muscle]) {
+            totalFatigue += muscleStatus[muscle].fatigue || 0;
+            muscleCount++;
+        }
     }
     const avgFatigue = muscleCount > 0 ? Math.round(totalFatigue / muscleCount) : 0;
     
@@ -66,6 +69,7 @@ function updateStats() {
     const detailShoppingPending = document.getElementById('detailShoppingPending');
     const detailShoppingCompleted = document.getElementById('detailShoppingCompleted');
     const detailWorkouts = document.getElementById('detailWorkouts');
+    const detailFatigue = document.getElementById('detailFatigue');
     
     if (detailBooksRead) detailBooksRead.innerText = booksRead.length;
     if (detailBooksToRead) detailBooksToRead.innerText = booksToRead.length;
@@ -76,6 +80,7 @@ function updateStats() {
     if (detailShoppingPending) detailShoppingPending.innerText = shoppingPending;
     if (detailShoppingCompleted) detailShoppingCompleted.innerText = shoppingCompleted;
     if (detailWorkouts) detailWorkouts.innerText = workouts.length;
+    if (detailFatigue) detailFatigue.innerText = avgFatigue;
 }
 
 function initDockActive() {

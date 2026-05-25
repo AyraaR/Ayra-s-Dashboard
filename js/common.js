@@ -89,14 +89,13 @@ function initDraggableDock() {
     
     let isDragging = false;
     let startX;
-    let dragThreshold = 50; // pixels para considerar cambio de página
     let startPage = window.location.pathname.split('/').pop();
     
     const links = Array.from(dock.querySelectorAll('.dock-item'));
     const pages = links.map(link => link.getAttribute('data-page'));
     
     dock.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.dock-item')) return; // No interferir con clicks normales
+        if (e.target.closest('.dock-item')) return;
         isDragging = true;
         startX = e.clientX;
         dock.style.cursor = 'grabbing';
@@ -105,7 +104,7 @@ function initDraggableDock() {
     document.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
         const deltaX = e.clientX - startX;
-        if (Math.abs(deltaX) > dragThreshold) {
+        if (Math.abs(deltaX) > 80) {
             isDragging = false;
             dock.style.cursor = 'grab';
             
@@ -132,7 +131,9 @@ function initDraggableDock() {
     dock.style.cursor = 'grab';
 }
 
-// Llamar esta función después de cargar cada página
-document.addEventListener('DOMContentLoaded', () => {
+// Llamar al cargar cada página
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDraggableDock);
+} else {
     initDraggableDock();
-});
+}

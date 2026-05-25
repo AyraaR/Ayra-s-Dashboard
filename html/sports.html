@@ -18,7 +18,8 @@
         <!-- Músculos con scroll horizontal -->
         <div class="glass-card" style="margin-bottom: 24px;">
             <h2><i class="fas fa-dumbbell"></i> Estado de Músculos</h2>
-            <div id="muscleStats" style="display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; margin-top: 15px;">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">Arrastra horizontalmente para ver todos los grupos musculares</p>
+            <div id="muscleStats" style="display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; margin-top: 5px;">
                 <!-- Se llena con JS -->
             </div>
         </div>
@@ -28,22 +29,18 @@
             <h2><i class="fas fa-plus-circle"></i> Registrar Entrenamiento</h2>
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                 <select id="exerciseSelect" class="glass-input" style="flex: 1;">
-                    <option value="pecho">Pecho - Press banca</option>
-                    <option value="espalda">Espalda - Dominadas</option>
-                    <option value="piernas">Piernas - Sentadillas</option>
-                    <option value="hombros">Hombros - Press militar</option>
-                    <option value="biceps">Bíceps - Curl</option>
-                    <option value="triceps">Tríceps - Fondos</option>
-                    <option value="core">Core - Plancha</option>
-                    <option value="cardio">Cardio - Correr</option>
+                    <option value="">Cargando ejercicios...</option>
                 </select>
                 <select id="intensitySelect" class="glass-input" style="width: auto;">
-                    <option value="bajo">Bajo</option>
-                    <option value="medio">Medio</option>
-                    <option value="alto">Alto</option>
+                    <option value="bajo">🟢 Bajo</option>
+                    <option value="medio">🟡 Medio</option>
+                    <option value="alto">🔴 Alto</option>
                 </select>
                 <button id="addWorkoutBtn" class="btn-primary"><i class="fas fa-save"></i> Registrar</button>
             </div>
+            <p style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 10px;">
+                <i class="fas fa-info-circle"></i> La fatiga se acumula por grupo muscular y se reduce con el descanso
+            </p>
         </div>
 
         <!-- Historial -->
@@ -54,13 +51,13 @@
     </main>
 
     <div class="floating-dock">
-        <a href="home.html" class="dock-item"><i class="fas fa-home"></i><span>Inicio</span></a>
-        <a href="calculator.html" class="dock-item"><i class="fas fa-calculator"></i><span>Horas</span></a>
-        <a href="shopping.html" class="dock-item"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
-        <a href="books.html" class="dock-item"><i class="fas fa-book"></i><span>Libros</span></a>
-        <a href="series.html" class="dock-item"><i class="fas fa-tv"></i><span>Series</span></a>
-        <a href="sports.html" class="dock-item active"><i class="fas fa-heartbeat"></i><span>Deporte</span></a>
-        <a href="stats.html" class="dock-item"><i class="fas fa-chart-line"></i><span>Stats</span></a>
+        <a href="home.html" class="dock-item" data-page="home"><i class="fas fa-home"></i><span>Inicio</span></a>
+        <a href="calculator.html" class="dock-item" data-page="calculator"><i class="fas fa-calculator"></i><span>Horas</span></a>
+        <a href="shopping.html" class="dock-item" data-page="shopping"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
+        <a href="books.html" class="dock-item" data-page="books"><i class="fas fa-book"></i><span>Libros</span></a>
+        <a href="series.html" class="dock-item" data-page="series"><i class="fas fa-tv"></i><span>Series</span></a>
+        <a href="sports.html" class="dock-item active" data-page="sports"><i class="fas fa-heartbeat"></i><span>Deporte</span></a>
+        <a href="stats.html" class="dock-item" data-page="stats"><i class="fas fa-chart-line"></i><span>Stats</span></a>
     </div>
 
     <script src="../js/auth.js"></script>
