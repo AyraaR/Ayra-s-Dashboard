@@ -137,3 +137,29 @@ if (document.readyState === 'loading') {
 } else {
     initDraggableDock();
 }
+
+// DeepSeek API (necesitas tu API key)
+const DEEPSEEK_API_KEY = 'sk-2a98db3438b247568705e38c4b40c6fa';
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+async function askDeepSeek(prompt) {
+    try {
+        const response = await fetch(DEEPSEEK_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.7
+            })
+        });
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error('Error calling DeepSeek:', error);
+        return null;
+    }
+}

@@ -47,88 +47,91 @@ function getCurrentDayIndex() {
     return day - 1;
 }
 
-function getMinExitTime(dayIndex, startTime) {
+function getMinHoursFromStartTime(dayIndex, startTime) {
     const [sH, sM] = startTime.split(':').map(Number);
     const minExitMinutes = 16 * 60 + 30;
     let workMinutes = minExitMinutes - (sH * 60 + sM);
     const hasLunch = dayIndex !== 4;
     if (hasLunch) workMinutes -= 30;
-    return Math.max(0, workMinutes / 60);
+    return Math.max(0, Math.round((workMinutes / 60) * 10) / 10);
 }
 
-// NUEVO: Reparto proporcional de horas extra entre días FUTUROS
-function calculateProportionalHours() {
+// NUEVO ALGORITMO DE REPARTO PROPORCIONAL CORRECTO
+function calculateProportionalDistribution() {
     const currentDayIdx = getCurrentDayIndex();
     if (currentDayIdx === -1) return {};
     
-    // Calcular horas ya comprometidas (días pasados + teletrabajo + vacaciones)
-    let committedHours = 0;
-    const futureFlexibleDays = [];
+    // Calcular horas ya acumuladas (días pasados + hoy)
+    let accumulated = 0;
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     
     for (let i = 0; i <= currentDayIdx; i++) {
-        const dayId = days[i].id;
+        const dayId = dayNames[i];
         const dayConfig = currentSettings[dayId] || {};
         const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
         
         if (dayConfig.isVacation) {
-            committedHours += 8;
+            accumulated += 8;
         } else if (dayConfig.isTelework) {
-            committedHours += getFixedTeleworkHours(i);
+            accumulated += getFixedTeleworkHours(i);
         } else if (dayConfig.customHours) {
-            committedHours += dayConfig.customHours;
+            accumulated += dayConfig.customHours;
         } else if (i < currentDayIdx) {
-            // Día presencial pasado sin configuración especial
-            committedHours += 8;
+            accumulated += 8;
         } else if (i === currentDayIdx) {
             // Hoy: sumar horas reales trabajadas
-            committedHours += calculateTodayHoursReal();
+            accumulated += calculateTodayHoursReal();
         }
     }
     
-    // Días futuros presenciales
+    // Días futuros: calcular horas fijas (teletrabajo, vacaciones, personalizadas)
+    let futureFixed = 0;
+    const flexibleFutureDays = [];
+    
     for (let i = currentDayIdx + 1; i < days.length; i++) {
         const dayId = days[i].id;
         const dayConfig = currentSettings[dayId] || {};
         const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
         
         if (dayConfig.isVacation) {
-            committedHours += 8;
+            futureFixed += 8;
         } else if (dayConfig.isTelework) {
-            committedHours += getFixedTeleworkHours(i);
+            futureFixed += getFixedTeleworkHours(i);
         } else if (dayConfig.customHours) {
-            committedHours += dayConfig.customHours;
+            futureFixed += dayConfig.customHours;
         } else {
-            futureFlexibleDays.push({ day: days[i], startTime });
+            flexibleFutureDays.push({ dayId: dayId, index: i, startTime: startTime });
         }
     }
     
-    const remainingNeeded = 40 - committedHours;
+    const remainingNeeded = 40 - accumulated - futureFixed;
     
-    if (futureFlexibleDays.length === 0 || remainingNeeded <= 0) {
+    if (flexibleFutureDays.length === 0 || remainingNeeded <= 0) {
         const result = {};
-        futureFlexibleDays.forEach(({ day, startTime }) => {
-            result[day.id] = getMinExitTime(day.index, startTime);
+        flexibleFutureDays.forEach(day => {
+            result[day.dayId] = getMinHoursFromStartTime(day.index, day.startTime);
         });
         return result;
     }
     
-    // Reparto PROPORCIONAL entre días futuros
-    let hoursPerDay = remainingNeeded / futureFlexibleDays.length;
+    // Reparto proporcional entre días flexibles futuros
+    let hoursPerDay = remainingNeeded / flexibleFutureDays.length;
     const result = {};
+    let totalAssigned = 0;
     
-    futureFlexibleDays.forEach(({ day, startTime }) => {
-        const minHours = getMinExitTime(day.index, startTime);
+    for (const day of flexibleFutureDays) {
+        const minHours = getMinHoursFromStartTime(day.index, day.startTime);
         let assigned = Math.max(minHours, hoursPerDay);
         assigned = Math.round(assigned * 10) / 10;
-        result[day.id] = assigned;
-    });
+        result[day.dayId] = assigned;
+        totalAssigned += assigned;
+    }
     
-    // Ajustar por redondeo
-    let totalAssigned = Object.values(result).reduce((a, b) => a + b, 0);
+    // Ajuste por redondeo
     const diff = remainingNeeded - totalAssigned;
-    if (Math.abs(diff) > 0.01 && futureFlexibleDays.length > 0) {
-        result[futureFlexibleDays[0].day.id] += diff;
-        result[futureFlexibleDays[0].day.id] = Math.round(result[futureFlexibleDays[0].day.id] * 10) / 10;
+    if (Math.abs(diff) > 0.01 && flexibleFutureDays.length > 0) {
+        result[flexibleFutureDays[0].dayId] += diff;
+        result[flexibleFutureDays[0].dayId] = Math.round(result[flexibleFutureDays[0].dayId] * 10) / 10;
     }
     
     return result;
@@ -142,13 +145,13 @@ function getDayHours(dayId, dayIndex) {
     if (dayConfig?.isTelework) return getFixedTeleworkHours(dayIndex);
     if (dayConfig?.customHours) return dayConfig.customHours;
     
-    if (dayIndex < currentDayIdx) return 8; // Días pasados presenciales
+    if (dayIndex < currentDayIdx) return 8;
     
-    const proportional = calculateProportionalHours();
-    if (proportional[dayId]) return proportional[dayId];
+    const distribution = calculateProportionalDistribution();
+    if (distribution[dayId]) return distribution[dayId];
     
     const startTime = dayConfig?.customStartTime || currentSettings.globalStartTime;
-    return getMinExitTime(dayIndex, startTime);
+    return getMinHoursFromStartTime(dayIndex, startTime);
 }
 
 function calculateTodayHoursReal() {
@@ -233,19 +236,19 @@ function renderTable() {
                 ${!isTelework && !isVacation ? 
                     `<input type="time" class="startTimeInput" data-day="${day.id}" value="${startTime}" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 20px; padding: 6px 10px; color: white; width: 100px;">` : 
                     '<span style="color: var(--text-secondary);">---</span>'}
-               </td>
+                </td>
             <td style="padding: 12px; text-align: center;">
                 <input type="checkbox" class="teleworkCheck" data-day="${day.id}" ${isTelework ? 'checked' : ''} ${isVacation ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);">
-               </td>
+                </td>
             <td style="padding: 12px; text-align: center;">
                 <input type="checkbox" class="vacationCheck" data-day="${day.id}" ${isVacation ? 'checked' : ''} ${isTelework ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);">
-               </td>
+                </td>
             <td style="padding: 12px; text-align: center;">
                 <strong style="color: var(--accent);">${hours.toFixed(1)}h</strong>
-               </td>
+                </td>
             <td style="padding: 12px; text-align: center;">
                 <strong>${exitTime}</strong>
-               </td>
+                </td>
         `;
         tbody.appendChild(row);
     });

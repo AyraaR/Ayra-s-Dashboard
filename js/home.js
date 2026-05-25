@@ -7,45 +7,6 @@ function updateGreeting() {
     if (greetSpan) greetSpan.innerText = `${greeting}, ${user.username}`;
 }
 
-function getDayHoursForHome(dayId, dayIndex, settings) {
-    const dayConfig = settings[dayId];
-    if (dayConfig?.isVacation) return 8;
-    if (dayConfig?.isTelework) return dayIndex === 4 ? 8 : 9;
-    if (dayConfig?.customHours) return dayConfig.customHours;
-    return 8;
-}
-
-function calculateTotalWeekHoursForHome(workSettings) {
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    let total = 0;
-    days.forEach((day, idx) => { total += getDayHoursForHome(day, idx, workSettings || {}); });
-    return total;
-}
-
-function calculateExitTimeForHome(workSettings) {
-    const now = new Date();
-    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const today = dayNames[now.getDay() - 1];
-    if (!today || now.getDay() === 6 || now.getDay() === 0) return 'Fin de semana';
-    
-    const dayIndex = dayNames.indexOf(today);
-    const startTime = (workSettings?.globalStartTime) || '08:30';
-    const dayConfig = workSettings?.[today] || {};
-    const actualStartTime = dayConfig.customStartTime || startTime;
-    
-    let workHours = getDayHoursForHome(today, dayIndex, workSettings || {});
-    if (dayConfig?.isVacation) return 'Vacaciones';
-    
-    const [startHour, startMin] = actualStartTime.split(':').map(Number);
-    const hasLunch = dayIndex !== 4;
-    let totalMinutes = (startHour * 60 + startMin) + (workHours * 60) + (hasLunch ? 30 : 0);
-    const minExitMinutes = 16 * 60 + 30;
-    if (totalMinutes < minExitMinutes) totalMinutes = minExitMinutes;
-    const exitHour = Math.floor(totalMinutes / 60);
-    const exitMin = totalMinutes % 60;
-    return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
-}
-
 function calculateTodayHoursReal() {
     const userData = getUserData();
     if (!userData) return 0;
@@ -91,33 +52,68 @@ function calculateAccumulatedWeekHours() {
     return Math.round(accumulated * 10) / 10;
 }
 
+function calculateExitTimeForHome() {
+    const userData = getUserData();
+    if (!userData) return '--:--';
+    const settings = userData.workSettings || {};
+    const now = new Date();
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const today = dayNames[now.getDay() - 1];
+    if (!today || now.getDay() === 6 || now.getDay() === 0) return 'Fin de semana';
+    
+    const dayIndex = dayNames.indexOf(today);
+    const startTime = (settings?.globalStartTime) || '08:30';
+    const dayConfig = settings?.[today] || {};
+    const actualStartTime = dayConfig.customStartTime || startTime;
+    
+    let workHours = 8;
+    if (dayConfig.isVacation) return 'Vacaciones';
+    if (dayConfig.isTelework) workHours = dayIndex === 4 ? 8 : 9;
+    if (dayConfig.customHours) workHours = dayConfig.customHours;
+    
+    const [startHour, startMin] = actualStartTime.split(':').map(Number);
+    const hasLunch = dayIndex !== 4;
+    let totalMinutes = (startHour * 60 + startMin) + (workHours * 60) + (hasLunch ? 30 : 0);
+    const minExitMinutes = 16 * 60 + 30;
+    if (totalMinutes < minExitMinutes) totalMinutes = minExitMinutes;
+    const exitHour = Math.floor(totalMinutes / 60);
+    const exitMin = totalMinutes % 60;
+    return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
+}
+
 function updateHomeStats() {
     const userData = getUserData();
     if (!userData) return;
     
-    const workSettings = userData.workSettings || {};
     const actualAccumulated = calculateAccumulatedWeekHours();
     const percent = Math.min(100, (actualAccumulated / 40) * 100);
     const todayHours = calculateTodayHoursReal();
-    const exitTime = calculateExitTimeForHome(workSettings);
+    const exitTime = calculateExitTimeForHome();
     
     const weeklyHoursSpan = document.getElementById('weeklyHours');
     const todayHoursSpan = document.getElementById('todayHours');
     const progressFill = document.getElementById('weeklyProgress');
     const exitTimeSpan = document.getElementById('exitTimeToday');
-    const statsProductivity = document.getElementById('statsProductivity');
     
     if (weeklyHoursSpan) weeklyHoursSpan.innerText = actualAccumulated.toFixed(1);
     if (todayHoursSpan) todayHoursSpan.innerText = todayHours.toFixed(1);
     if (progressFill) progressFill.style.width = percent + '%';
     if (exitTimeSpan) exitTimeSpan.innerText = exitTime;
     
-    // Productividad basada en lo que deberías haber trabajado hoy
+    const statsBooks = document.getElementById('statsBooks');
+    const statsWatched = document.getElementById('statsWatched');
+    const statsProductivity = document.getElementById('statsProductivity');
+    const statsWorkouts = document.getElementById('statsWorkouts');
+    
+    if (statsBooks) statsBooks.innerText = (userData.books || []).length;
+    if (statsWatched) statsWatched.innerText = (userData.series?.watched || []).length;
+    if (statsWorkouts) statsWorkouts.innerText = (userData.workouts || []).length;
+    
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const today = dayNames[new Date().getDay() - 1];
     let expectedToday = 8;
-    if (today && workSettings[today]) {
-        const dayConfig = workSettings[today];
+    if (today && userData.workSettings?.[today]) {
+        const dayConfig = userData.workSettings[today];
         const dayIndex = dayNames.indexOf(today);
         if (dayConfig?.isVacation) expectedToday = 8;
         else if (dayConfig?.isTelework) expectedToday = dayIndex === 4 ? 8 : 9;
@@ -125,11 +121,6 @@ function updateHomeStats() {
     }
     const productivity = expectedToday > 0 ? Math.min(100, (todayHours / expectedToday) * 100) : 0;
     if (statsProductivity) statsProductivity.innerText = Math.floor(productivity);
-    
-    const statsBooks = document.getElementById('statsBooks');
-    const statsWatched = document.getElementById('statsWatched');
-    if (statsBooks) statsBooks.innerText = (userData.books || []).length;
-    if (statsWatched) statsWatched.innerText = (userData.series?.watched || []).length;
 }
 
 async function updatePreviews() {
@@ -146,15 +137,14 @@ async function updatePreviews() {
             const previewItems = await Promise.all(books.slice(0, 3).map(async (book) => {
                 let coverUrl = '';
                 try {
-                    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(book.title)}&limit=1`;
-                    const response = await fetch(url);
+                    const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(book.title)}&limit=1`);
                     const data = await response.json();
                     if (data.docs && data.docs[0] && data.docs[0].cover_i) {
                         coverUrl = `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-M.jpg`;
                     }
-                } catch(e) {}
+                } catch(e) { console.log('Error fetching cover:', e); }
                 return `<div style="flex: 1; text-align: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 16px; margin: 0 5px;">
-                            ${coverUrl ? `<img src="${coverUrl}" style="width: 100%; max-height: 100px; object-fit: cover; border-radius: 12px;">` : '<i class="fas fa-book" style="font-size: 3rem; color: var(--accent);"></i>'}
+                            ${coverUrl ? `<img src="${coverUrl}" style="width: 100%; max-height: 100px; object-fit: cover; border-radius: 12px;" onerror="this.src=''">` : '<i class="fas fa-book" style="font-size: 3rem; color: var(--accent);"></i>'}
                             <div style="font-size: 0.7rem; margin-top: 5px;">${escapeHtml(book.title.substring(0, 20))}</div>
                         </div>`;
             }));
@@ -177,9 +167,9 @@ async function updatePreviews() {
                     if (data.results && data.results[0]?.poster_path) {
                         posterUrl = `https://image.tmdb.org/t/p/w185${data.results[0].poster_path}`;
                     }
-                } catch(e) {}
+                } catch(e) { console.log('Error fetching poster:', e); }
                 return `<div style="flex: 1; text-align: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 16px; margin: 0 5px;">
-                            ${posterUrl ? `<img src="${posterUrl}" style="width: 100%; max-height: 100px; object-fit: cover; border-radius: 12px;">` : '<i class="fas fa-tv" style="font-size: 3rem; color: var(--accent);"></i>'}
+                            ${posterUrl ? `<img src="${posterUrl}" style="width: 100%; max-height: 100px; object-fit: cover; border-radius: 12px;" onerror="this.src=''">` : '<i class="fas fa-tv" style="font-size: 3rem; color: var(--accent);"></i>'}
                             <div style="font-size: 0.7rem; margin-top: 5px;">${escapeHtml(series.title.substring(0, 20))}</div>
                         </div>`;
             }));
@@ -195,6 +185,25 @@ async function updatePreviews() {
             shoppingPreview.innerHTML = '<li style="text-align: center; padding: 20px;"><i class="fas fa-plus-circle"></i> Añade items</li>';
         } else {
             shoppingPreview.innerHTML = items.slice(0, 5).map(item => `<li><i class="fas ${item.completed ? 'fa-check-circle' : 'fa-circle'}" style="color: ${item.completed ? 'var(--success)' : 'var(--accent)'}"></i> ${escapeHtml(item.name)}</li>`).join('');
+        }
+    }
+    
+    // Deporte preview - últimos 3 entrenamientos
+    const sportsPreview = document.getElementById('sportsPreview');
+    if (sportsPreview) {
+        const workouts = userData.workouts || [];
+        if (workouts.length === 0) {
+            sportsPreview.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-dumbbell"></i><br>Sin entrenamientos</div>';
+        } else {
+            sportsPreview.innerHTML = workouts.slice(0, 3).map(w => `
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 8px;">
+                    <i class="fas fa-dumbbell" style="color: var(--accent);"></i>
+                    <div style="flex: 1;">
+                        <strong>${escapeHtml(w.name)}</strong>
+                        <small style="display: block;">${w.weight}kg · ${w.sets}x${w.reps}</small>
+                    </div>
+                </div>
+            `).join('');
         }
     }
 }
