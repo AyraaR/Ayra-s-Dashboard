@@ -23,38 +23,55 @@ function saveBooks() {
 
 async function searchBooks() {
     const query = document.getElementById('searchBookInput').value.trim();
-    if (!query) return;
     const resultsDiv = document.getElementById('searchResults');
-    resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-pulse"></i> Buscando...</div>';
+    
+    if (!query) {
+        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;">Escribe algo para buscar</div>';
+        return;
+    }
+    
+    resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-pulse"></i> Buscando libros...</div>';
     
     try {
-        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=8&langRestrict=es`);
+        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=8&langRestrict=es`;
+        console.log('Buscando en:', url);
+        
+        const response = await fetch(url);
         const data = await response.json();
+        
+        console.log('Respuesta:', data);
+        
         if (!data.items || data.items.length === 0) {
-            resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;">No se encontraron resultados</div>';
+            resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;">📚 No se encontraron libros. Prueba con otro título.</div>';
             return;
         }
+        
         resultsDiv.innerHTML = data.items.map(book => {
             const info = book.volumeInfo;
             const title = info.title || 'Sin título';
             const authors = info.authors ? info.authors.join(', ') : 'Autor desconocido';
             const cover = info.imageLinks?.thumbnail || '';
+            const description = info.description ? info.description.substring(0, 100) + '...' : '';
+            
             return `
-                <div class="result-item">
-                    ${cover ? `<img src="${cover}" onerror="this.style.display='none'">` : '<div style="width:60px;height:80px;background:rgba(255,255,255,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="fas fa-book"></i></div>'}
-                    <div class="result-info">
-                        <strong>${escapeHtml(title)}</strong>
-                        <small>${escapeHtml(authors)}</small>
-                        <div class="result-actions">
-                            <button onclick="addToToRead('${escapeHtml(title).replace(/'/g, "\\'")}', '${escapeHtml(authors).replace(/'/g, "\\'")}')" class="btn-secondary">📚 Quiero leer</button>
-                            <button onclick="addToRead('${escapeHtml(title).replace(/'/g, "\\'")}', '${escapeHtml(authors).replace(/'/g, "\\'")}')" class="btn-primary">✅ Leído</button>
+                <div style="display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); border-radius: 16px; margin-bottom: 10px;">
+                    ${cover ? `<img src="${cover}" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px;">` : '<div style="width:60px;height:80px;background:rgba(255,255,255,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="fas fa-book" style="font-size: 2rem;"></i></div>'}
+                    <div style="flex: 1;">
+                        <strong style="color: var(--accent);">${escapeHtml(title)}</strong>
+                        <small style="display: block; color: var(--text-secondary);">${escapeHtml(authors)}</small>
+                        ${description ? `<p style="font-size: 0.75rem; margin-top: 5px;">${escapeHtml(description)}</p>` : ''}
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <button onclick="addToToRead('${escapeHtml(title).replace(/'/g, "\\'")}', '${escapeHtml(authors).replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 6px 12px;"><i class="fas fa-clock"></i> Quiero leer</button>
+                            <button onclick="addToRead('${escapeHtml(title).replace(/'/g, "\\'")}', '${escapeHtml(authors).replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 6px 12px;"><i class="fas fa-check"></i> Ya leído</button>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
+        
     } catch (error) {
-        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">Error al buscar libros. Intenta de nuevo.</div>';
+        console.error('Error:', error);
+        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">❌ Error al buscar libros. Verifica tu conexión.</div>';
     }
 }
 
@@ -62,14 +79,18 @@ function addToToRead(title, author) {
     toReadBooks.unshift({ title, author, date: new Date().toISOString() });
     saveBooks();
     renderBooks();
-    showToast('Añadido a "Por leer"');
+    showToast('📚 Añadido a "Por leer"');
+    document.getElementById('searchResults').innerHTML = '';
+    document.getElementById('searchBookInput').value = '';
 }
 
 function addToRead(title, author) {
     readBooks.unshift({ title, author, date: new Date().toISOString() });
     saveBooks();
     renderBooks();
-    showToast('Añadido a "Leídos"');
+    showToast('✅ Añadido a "Leídos"');
+    document.getElementById('searchResults').innerHTML = '';
+    document.getElementById('searchBookInput').value = '';
 }
 
 function moveToRead(index) {
@@ -79,6 +100,7 @@ function moveToRead(index) {
         readBooks.unshift(book);
         saveBooks();
         renderBooks();
+        showToast('✅ Movido a leídos');
     }
 }
 
@@ -99,22 +121,24 @@ function renderBooks() {
     if (!container) return;
     
     let books = activeTab === 'toRead' ? toReadBooks : readBooks;
-    let title = activeTab === 'toRead' ? '📚 Por leer' : '✅ Leídos';
     
     if (books.length === 0) {
-        container.innerHTML = `<li style="text-align: center; padding: 20px;">No hay libros en "${title}"</li>`;
+        container.innerHTML = `<li style="text-align: center; padding: 30px; color: var(--text-secondary);"><i class="fas fa-book-open"></i> No hay libros en esta sección</li>`;
         return;
     }
     
     container.innerHTML = books.map((book, index) => `
-        <li>
-            <div class="item-info">
+        <li style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--glass-border);">
+            <div style="display: flex; align-items: center; gap: 12px;">
                 <i class="fas ${activeTab === 'toRead' ? 'fa-clock' : 'fa-check-circle'}" style="color: ${activeTab === 'toRead' ? 'var(--warning)' : 'var(--success)'}"></i>
-                <span><strong>${escapeHtml(book.title)}</strong> - ${escapeHtml(book.author)}</span>
+                <div>
+                    <strong>${escapeHtml(book.title)}</strong>
+                    <small style="display: block; color: var(--text-secondary);">${escapeHtml(book.author)}</small>
+                </div>
             </div>
-            <div class="item-actions">
-                ${activeTab === 'toRead' ? `<button onclick="moveToRead(${index})" class="btn-secondary"><i class="fas fa-check"></i></button>` : ''}
-                <button onclick="${activeTab === 'toRead' ? `removeFromToRead(${index})` : `removeFromRead(${index})`}" class="btn-danger"><i class="fas fa-trash"></i></button>
+            <div style="display: flex; gap: 8px;">
+                ${activeTab === 'toRead' ? `<button onclick="moveToRead(${index})" class="btn-secondary" style="padding: 4px 12px;"><i class="fas fa-check"></i></button>` : ''}
+                <button onclick="${activeTab === 'toRead' ? `removeFromToRead(${index})` : `removeFromRead(${index})`}" class="btn-danger" style="padding: 4px 12px;"><i class="fas fa-trash"></i></button>
             </div>
         </li>
     `).join('');
@@ -141,11 +165,6 @@ function initDockActive() {
         const page = item.getAttribute('data-page');
         item.classList.remove('active');
         if (page === 'books' && currentPage === 'books.html') item.classList.add('active');
-        if (page === 'home' && currentPage === 'home.html') item.classList.add('active');
-        if (page === 'calculator' && currentPage === 'calculator.html') item.classList.add('active');
-        if (page === 'shopping' && currentPage === 'shopping.html') item.classList.add('active');
-        if (page === 'series' && currentPage === 'series.html') item.classList.add('active');
-        if (page === 'stats' && currentPage === 'stats.html') item.classList.add('active');
     });
 }
 
@@ -156,8 +175,13 @@ document.addEventListener('DOMContentLoaded', () => {
     loadBooks();
     initTabs();
     initDockActive();
-    document.getElementById('searchBookBtn')?.addEventListener('click', searchBooks);
-    document.getElementById('searchBookInput')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBooks(); });
+    
+    const searchBtn = document.getElementById('searchBookBtn');
+    const searchInput = document.getElementById('searchBookInput');
+    
+    if (searchBtn) searchBtn.addEventListener('click', searchBooks);
+    if (searchInput) searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBooks(); });
+    
     document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
 });
 

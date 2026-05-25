@@ -53,29 +53,43 @@ function updateHomeStats() {
     const percent = Math.min(100, (weeklyTotal / 40) * 100);
     const todayHours = typeof calculateTodayHours === 'function' ? calculateTodayHours() : 0;
     
+    // Calcular horas totales que debería haber trabajado hoy según configuración
+    const now = new Date();
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const today = dayNames[now.getDay() - 1];
+    let expectedToday = 8;
+    if (today && workSettings[today]) {
+        const dayConfig = workSettings[today];
+        const dayIndex = dayNames.indexOf(today);
+        if (dayConfig?.isVacation) expectedToday = 8;
+        else if (dayConfig?.isTelework) expectedToday = dayIndex === 4 ? 8 : 9;
+        else if (dayConfig?.customHours) expectedToday = dayConfig.customHours;
+    }
+    
+    // Productividad = horas trabajadas / horas esperadas
+    const productivity = expectedToday > 0 ? Math.min(100, (todayHours / expectedToday) * 100) : 0;
+    
     const weeklyHoursSpan = document.getElementById('weeklyHours');
     const todayHoursSpan = document.getElementById('todayHours');
     const progressFill = document.getElementById('weeklyProgress');
     const exitTimeSpan = document.getElementById('exitTimeToday');
+    const statsProductivity = document.getElementById('statsProductivity');
     
     if (weeklyHoursSpan) weeklyHoursSpan.innerText = weeklyTotal.toFixed(1);
     if (todayHoursSpan) todayHoursSpan.innerText = todayHours.toFixed(1);
     if (progressFill) progressFill.style.width = percent + '%';
     if (exitTimeSpan) exitTimeSpan.innerText = calculateExitTimeForHome(workSettings);
+    if (statsProductivity) statsProductivity.innerText = Math.floor(productivity);
     
     // Estadísticas rápidas
     const booksCount = (userData.books || []).length;
     const watchedCount = (userData.series?.watched || []).length;
-    const productivity = weeklyTotal > 0 ? Math.min(100, (weeklyTotal / 40) * 100) : 0;
     
     const statsBooks = document.getElementById('statsBooks');
     const statsWatched = document.getElementById('statsWatched');
-    const statsProductivity = document.getElementById('statsProductivity');
     if (statsBooks) statsBooks.innerText = booksCount;
     if (statsWatched) statsWatched.innerText = watchedCount;
-    if (statsProductivity) statsProductivity.innerText = Math.floor(productivity);
 }
-
 async function updatePreviews() {
     const userData = getUserData();
     if (!userData) return;

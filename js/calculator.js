@@ -11,13 +11,21 @@ let currentSettings = {};
 function loadSettings() {
     const userData = getUserData();
     if (userData && userData.workSettings) {
-        currentSettings = { ...userData.workSettings };
+        currentSettings = JSON.parse(JSON.stringify(userData.workSettings));
     } else {
         currentSettings = { globalStartTime: '08:30' };
-        days.forEach(day => { currentSettings[day.id] = { isTelework: false, isVacation: false, customHours: null, customStartTime: null }; });
+        days.forEach(day => { 
+            currentSettings[day.id] = { 
+                isTelework: false, 
+                isVacation: false, 
+                customHours: null, 
+                customStartTime: null 
+            }; 
+        });
     }
     if (!currentSettings.globalStartTime) currentSettings.globalStartTime = '08:30';
-    document.getElementById('globalStartTime').value = currentSettings.globalStartTime;
+    const globalInput = document.getElementById('globalStartTime');
+    if (globalInput) globalInput.value = currentSettings.globalStartTime;
 }
 
 function saveSettings() {
@@ -28,17 +36,78 @@ function saveSettings() {
     }
 }
 
+// Horas FIJAS para teletrabajo (no negociables)
+function getFixedTeleworkHours(dayIndex) {
+    return dayIndex === 4 ? 8 : 9; // Viernes 8h, L-J 9h
+}
+
+// Calcula las horas que debe trabajar un día presencial para ajustar a 40h semanales
+function calculateFlexibleHours(teleworkDays, vacationDays) {
+    // Sumar horas fijas de teletrabajo
+    let fixedTotal = 0;
+    teleworkDays.forEach(dayIndex => {
+        fixedTotal += getFixedTeleworkHours(dayIndex);
+    });
+    
+    // Vacaciones = 8h fijas también
+    fixedTotal += vacationDays.length * 8;
+    
+    // Días presenciales restantes
+    const presencialDays = days.filter(day => 
+        !teleworkDays.includes(day.index) && !vacationDays.includes(day.index)
+    ).length;
+    
+    if (presencialDays === 0) return [];
+    
+    // Horas restantes para llegar a 40
+    const remainingHours = 40 - fixedTotal;
+    // Distribuir equitativamente entre días presenciales
+    const hoursPerDay = remainingHours / presencialDays;
+    
+    // Asignar horas a cada día presencial
+    const result = {};
+    days.forEach(day => {
+        if (!teleworkDays.includes(day.index) && !vacationDays.includes(day.index)) {
+            result[day.id] = Math.round(hoursPerDay * 10) / 10;
+        }
+    });
+    return result;
+}
+
 function getDayHours(dayId, dayIndex) {
     const dayConfig = currentSettings[dayId];
+    
+    // Vacaciones primero
     if (dayConfig?.isVacation) return 8;
-    if (dayConfig?.isTelework) return dayIndex === 4 ? 8 : 9;
+    
+    // Teletrabajo tiene horas fijas
+    if (dayConfig?.isTelework) return getFixedTeleworkHours(dayIndex);
+    
+    // Horas personalizadas
     if (dayConfig?.customHours) return dayConfig.customHours;
-    return 8;
+    
+    // Para días presenciales, calcular de forma flexible
+    const teleworkDays = [];
+    const vacationDays = [];
+    days.forEach(day => {
+        const cfg = currentSettings[day.id];
+        if (cfg?.isTelework) teleworkDays.push(day.index);
+        if (cfg?.isVacation) vacationDays.push(day.index);
+    });
+    
+    const flexibleHours = calculateFlexibleHours(teleworkDays, vacationDays);
+    
+    if (flexibleHours[dayId]) {
+        return flexibleHours[dayId];
+    }
+    
+    return 8; // fallback
 }
 
 function calculateExitTime(dayId, dayIndex, startTime, hours) {
+    if (hours === 0) return '--:--';
     const [sH, sM] = startTime.split(':').map(Number);
-    const hasLunch = dayIndex !== 4;
+    const hasLunch = dayIndex !== 4 && hours > 0;
     const totalMinutes = (sH * 60 + sM) + (hours * 60) + (hasLunch ? 30 : 0);
     const exitHour = Math.floor(totalMinutes / 60);
     const exitMin = totalMinutes % 60;
@@ -49,22 +118,46 @@ function renderTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
+    // Recalcular horas flexibles para todos los días
+    const teleworkDays = [];
+    const vacationDays = [];
+    days.forEach(day => {
+        const cfg = currentSettings[day.id];
+        if (cfg?.isTelework) teleworkDays.push(day.index);
+        if (cfg?.isVacation) vacationDays.push(day.index);
+    });
+    const flexibleHours = calculateFlexibleHours(teleworkDays, vacationDays);
+    
     tbody.innerHTML = '';
     days.forEach(day => {
         const dayConfig = currentSettings[day.id] || {};
         const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
-        const hours = getDayHours(day.id, day.index);
-        const exitTime = calculateExitTime(day.id, day.index, startTime, hours);
+        
+        let hours = 0;
+        let isFlexible = false;
+        
+        if (dayConfig?.isVacation) {
+            hours = 8;
+        } else if (dayConfig?.isTelework) {
+            hours = getFixedTeleworkHours(day.index);
+        } else if (dayConfig?.customHours) {
+            hours = dayConfig.customHours;
+        } else {
+            hours = flexibleHours[day.id] || 8;
+            isFlexible = true;
+        }
+        
+        const exitTime = hours > 0 ? calculateExitTime(day.id, day.index, startTime, hours) : 'Vacaciones';
         
         const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid var(--glass-border)';
         row.innerHTML = `
-            <td><strong>${day.name}</strong></td>
-            <td><input type="time" class="startTimeInput" data-day="${day.id}" value="${startTime}" style="width: 90px;"></td>
-            <td><input type="checkbox" class="teleworkCheck" data-day="${day.id}" ${dayConfig.isTelework ? 'checked' : ''}></td>
-            <td><input type="checkbox" class="vacationCheck" data-day="${day.id}" ${dayConfig.isVacation ? 'checked' : ''}></td>
-            <td><input type="number" class="customHoursInput" data-day="${day.id}" step="0.5" min="0" max="14" value="${dayConfig.customHours || ''}" placeholder="-" style="width: 80px;"></td>
-            <td class="hoursDisplay">${hours}</td>
-            <td class="exitDisplay">${exitTime}</td>
+            <td style="padding: 12px;"><strong>${day.name}</strong>${isFlexible ? '<br><small style="color: var(--accent);">flexible</small>' : ''}${dayConfig?.isVacation ? '<br><small style="color: var(--warning);">🌴 vacaciones</small>' : ''}${dayConfig?.isTelework ? '<br><small style="color: var(--success);">🏠 teletrabajo</small>' : ''}</td>
+            <td style="padding: 12px; text-align: center;"><input type="time" class="startTimeInput" data-day="${day.id}" value="${startTime}" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 20px; padding: 6px 10px; color: white; width: 100px;"></td>
+            <td style="padding: 12px; text-align: center;"><input type="checkbox" class="teleworkCheck" data-day="${day.id}" ${dayConfig?.isTelework ? 'checked' : ''} ${dayConfig?.isVacation ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);"></td>
+            <td style="padding: 12px; text-align: center;"><input type="checkbox" class="vacationCheck" data-day="${day.id}" ${dayConfig?.isVacation ? 'checked' : ''} ${dayConfig?.isTelework ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);"></td>
+            <td style="padding: 12px; text-align: center;"><strong style="color: var(--accent);">${hours.toFixed(1)}h</strong></td>
+            <td style="padding: 12px; text-align: center;"><strong>${exitTime}</strong></td>
         `;
         tbody.appendChild(row);
     });
@@ -89,9 +182,13 @@ function renderTable() {
                 currentSettings[day].isVacation = false;
                 currentSettings[day].customHours = null;
                 const vacationCheck = document.querySelector(`.vacationCheck[data-day="${day}"]`);
-                if (vacationCheck) vacationCheck.checked = false;
-                const customInput = document.querySelector(`.customHoursInput[data-day="${day}"]`);
-                if (customInput) customInput.value = '';
+                if (vacationCheck) {
+                    vacationCheck.checked = false;
+                    vacationCheck.disabled = true;
+                }
+            } else {
+                const vacationCheck = document.querySelector(`.vacationCheck[data-day="${day}"]`);
+                if (vacationCheck) vacationCheck.disabled = false;
             }
             renderTable();
             updateSummary();
@@ -107,28 +204,13 @@ function renderTable() {
                 currentSettings[day].isTelework = false;
                 currentSettings[day].customHours = null;
                 const teleworkCheck = document.querySelector(`.teleworkCheck[data-day="${day}"]`);
-                if (teleworkCheck) teleworkCheck.checked = false;
-                const customInput = document.querySelector(`.customHoursInput[data-day="${day}"]`);
-                if (customInput) customInput.value = '';
-            }
-            renderTable();
-            updateSummary();
-        });
-    });
-    
-    document.querySelectorAll('.customHoursInput').forEach(input => {
-        input.addEventListener('input', (e) => {
-            const day = e.target.dataset.day;
-            if (!currentSettings[day]) currentSettings[day] = {};
-            const value = e.target.value ? parseFloat(e.target.value) : null;
-            currentSettings[day].customHours = value;
-            if (value) {
-                currentSettings[day].isTelework = false;
-                currentSettings[day].isVacation = false;
+                if (teleworkCheck) {
+                    teleworkCheck.checked = false;
+                    teleworkCheck.disabled = true;
+                }
+            } else {
                 const teleworkCheck = document.querySelector(`.teleworkCheck[data-day="${day}"]`);
-                const vacationCheck = document.querySelector(`.vacationCheck[data-day="${day}"]`);
-                if (teleworkCheck) teleworkCheck.checked = false;
-                if (vacationCheck) vacationCheck.checked = false;
+                if (teleworkCheck) teleworkCheck.disabled = false;
             }
             renderTable();
             updateSummary();
@@ -141,16 +223,29 @@ function updateSummary() {
     days.forEach(day => {
         total += getDayHours(day.id, day.index);
     });
-    const difference = total - 40;
+    const difference = Math.round((total - 40) * 10) / 10;
+    const percent = Math.min(100, (total / 40) * 100);
+    
     const totalSpan = document.getElementById('totalWeekHours');
     const diffSpan = document.getElementById('weekDifference');
     const msgSpan = document.getElementById('adjustmentMsg');
+    const progressFill = document.getElementById('weeklyProgress');
+    
     if (totalSpan) totalSpan.innerText = total.toFixed(1);
-    if (diffSpan) diffSpan.innerText = difference.toFixed(1);
+    if (diffSpan) diffSpan.innerText = difference;
+    if (progressFill) progressFill.style.width = percent + '%';
+    
     if (msgSpan) {
-        if (difference > 0) msgSpan.innerHTML = `⚠️ Vas a trabajar ${difference.toFixed(1)} horas extra esta semana.`;
-        else if (difference < 0) msgSpan.innerHTML = `📉 Te faltan ${Math.abs(difference).toFixed(1)} horas.`;
-        else msgSpan.innerHTML = `✅ ¡Perfecto! Cumples exactamente las 40 horas.`;
+        if (Math.abs(difference) < 0.2) {
+            msgSpan.innerHTML = '✅ ¡Perfecto! Cumples exactamente las 40 horas semanales.';
+            msgSpan.style.color = 'var(--success)';
+        } else if (difference > 0) {
+            msgSpan.innerHTML = `⚠️ Vas a trabajar ${difference} horas extra esta semana. Puedes salir antes otros días.`;
+            msgSpan.style.color = 'var(--warning)';
+        } else {
+            msgSpan.innerHTML = `📉 Te faltan ${Math.abs(difference)} horas. Tendrás que recuperarlas otros días.`;
+            msgSpan.style.color = 'var(--warning)';
+        }
     }
 }
 
@@ -164,12 +259,12 @@ function applyGlobalTime() {
     });
     renderTable();
     updateSummary();
-    showToast('Hora global aplicada a todos los días');
+    showToast('⏰ Hora global aplicada a todos los días');
 }
 
 function saveAll() {
     saveSettings();
-    showToast('Configuración guardada correctamente');
+    showToast('💾 Configuración guardada correctamente');
 }
 
 function calculateTodayHours() {
@@ -194,7 +289,13 @@ function calculateTodayHours() {
     const hasLunch = dayIndex !== 4;
     if (hasLunch && workedMinutes > 30) workedMinutes -= 30;
     
-    return Math.max(0, workedMinutes / 60);
+    // Obtener horas totales que debe trabajar hoy
+    let totalWorkHours = 8;
+    if (dayConfig?.isVacation) totalWorkHours = 8;
+    else if (dayConfig?.isTelework) totalWorkHours = dayIndex === 4 ? 8 : 9;
+    else if (dayConfig?.customHours) totalWorkHours = dayConfig.customHours;
+    
+    return Math.min(workedMinutes / 60, totalWorkHours);
 }
 
 function initDockActive() {
@@ -203,11 +304,6 @@ function initDockActive() {
         const page = item.getAttribute('data-page');
         item.classList.remove('active');
         if (page === 'calculator' && currentPage === 'calculator.html') item.classList.add('active');
-        if (page === 'home' && currentPage === 'home.html') item.classList.add('active');
-        if (page === 'shopping' && currentPage === 'shopping.html') item.classList.add('active');
-        if (page === 'books' && currentPage === 'books.html') item.classList.add('active');
-        if (page === 'series' && currentPage === 'series.html') item.classList.add('active');
-        if (page === 'stats' && currentPage === 'stats.html') item.classList.add('active');
     });
 }
 
