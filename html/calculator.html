@@ -19,15 +19,26 @@
             <h2><i class="fas fa-calendar-week"></i> Planificación Semanal</h2>
             <p style="margin-bottom: 20px;">Configura cada día: entrada, teletrabajo, vacaciones u horas personalizadas</p>
             
-            <div id="daySelector" class="day-selector"></div>
-            <div id="configPanel" class="config-panel"></div>
+            <div style="margin-bottom: 20px;">
+                <label><i class="fas fa-clock"></i> Hora de entrada global: </label>
+                <input type="time" id="globalStartTime" value="08:30" class="glass-input" style="width: auto; display: inline-block; margin-left: 10px;">
+                <button id="applyGlobalBtn" class="btn-secondary" style="margin-left: 10px;"><i class="fas fa-save"></i> Aplicar a todos</button>
+            </div>
 
-            <div id="weeklySummary" class="weekly-summary">
+            <table class="calculator-table" id="calculatorTable">
+                <thead>
+                    <tr><th>Día</th><th>Entrada</th><th>Teletrabajo</th><th>Vacaciones</th><th>Horas personalizadas</th><th>Horas</th><th>Salida</th></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+
+            <div class="weekly-summary" style="margin-top: 30px;">
                 <div class="result-box">
                     <h3>Resumen Semanal</h3>
                     <p>📊 Total horas trabajadas: <strong id="totalWeekHours">0</strong> / 40</p>
                     <p>⚖️ Diferencia: <strong id="weekDifference">0</strong> horas</p>
                     <p id="adjustmentMsg" style="color: var(--warning);"></p>
+                    <button id="saveAllBtn" class="btn-primary" style="margin-top: 15px;"><i class="fas fa-save"></i> Guardar toda la semana</button>
                 </div>
             </div>
         </div>
@@ -39,6 +50,7 @@
         <a href="shopping.html" class="dock-item" data-page="shopping"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
         <a href="books.html" class="dock-item" data-page="books"><i class="fas fa-book"></i><span>Libros</span></a>
         <a href="series.html" class="dock-item" data-page="series"><i class="fas fa-tv"></i><span>Series</span></a>
+        <a href="stats.html" class="dock-item" data-page="stats"><i class="fas fa-chart-line"></i><span>Stats</span></a>
     </div>
 
     <script src="../js/auth.js"></script>

@@ -189,6 +189,11 @@ function initDockActive() {
         const page = item.getAttribute('data-page');
         item.classList.remove('active');
         if (page === 'series' && currentPage === 'series.html') item.classList.add('active');
+        if (page === 'home' && currentPage === 'home.html') item.classList.add('active');
+        if (page === 'calculator' && currentPage === 'calculator.html') item.classList.add('active');
+        if (page === 'shopping' && currentPage === 'shopping.html') item.classList.add('active');
+        if (page === 'books' && currentPage === 'books.html') item.classList.add('active');
+        if (page === 'stats' && currentPage === 'stats.html') item.classList.add('active');
     });
 }
 

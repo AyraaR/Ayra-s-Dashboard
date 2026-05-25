@@ -7,22 +7,22 @@ function updateGreeting() {
     if (greetSpan) greetSpan.innerText = `${greeting}, ${user.username}`;
 }
 
-function getDayHours(dayId, dayIndex, settings) {
+function getDayHoursForHome(dayId, dayIndex, settings) {
     const dayConfig = settings[dayId];
-    if (dayConfig && dayConfig.isVacation) return 8;
-    if (dayConfig && dayConfig.isTelework) return dayIndex === 4 ? 8 : 9;
-    if (dayConfig && dayConfig.customHours) return dayConfig.customHours;
+    if (dayConfig?.isVacation) return 8;
+    if (dayConfig?.isTelework) return dayIndex === 4 ? 8 : 9;
+    if (dayConfig?.customHours) return dayConfig.customHours;
     return 8;
 }
 
-function calculateTotalWeekHours(workSettings) {
+function calculateTotalWeekHoursForHome(workSettings) {
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     let total = 0;
-    days.forEach((day, idx) => { total += getDayHours(day, idx, workSettings || {}); });
+    days.forEach((day, idx) => { total += getDayHoursForHome(day, idx, workSettings || {}); });
     return total;
 }
 
-function calculateExitTime(workSettings) {
+function calculateExitTimeForHome(workSettings) {
     const now = new Date();
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const today = dayNames[now.getDay() - 1];
@@ -30,12 +30,13 @@ function calculateExitTime(workSettings) {
     
     const dayIndex = dayNames.indexOf(today);
     const startTime = (workSettings?.globalStartTime) || '08:30';
-    const [startHour, startMin] = startTime.split(':').map(Number);
+    const dayConfig = workSettings?.[today] || {};
+    const actualStartTime = dayConfig.customStartTime || startTime;
     
-    let workHours = getDayHours(today, dayIndex, workSettings || {});
-    const dayConfig = workSettings?.[today];
-    if (dayConfig && dayConfig.isVacation) return 'Vacaciones';
+    let workHours = getDayHoursForHome(today, dayIndex, workSettings || {});
+    if (dayConfig?.isVacation) return 'Vacaciones';
     
+    const [startHour, startMin] = actualStartTime.split(':').map(Number);
     const hasLunch = dayIndex !== 4;
     const totalMinutes = (startHour * 60 + startMin) + (workHours * 60) + (hasLunch ? 30 : 0);
     const exitHour = Math.floor(totalMinutes / 60);
@@ -48,45 +49,90 @@ function updateHomeStats() {
     if (!userData) return;
     
     const workSettings = userData.workSettings || {};
-    const weeklyTotal = calculateTotalWeekHours(workSettings);
-    const remaining = Math.max(0, 40 - weeklyTotal);
+    const weeklyTotal = calculateTotalWeekHoursForHome(workSettings);
     const percent = Math.min(100, (weeklyTotal / 40) * 100);
+    const todayHours = typeof calculateTodayHours === 'function' ? calculateTodayHours() : 0;
     
     const weeklyHoursSpan = document.getElementById('weeklyHours');
-    const remainingSpan = document.getElementById('remainingWeekly');
+    const todayHoursSpan = document.getElementById('todayHours');
     const progressFill = document.getElementById('weeklyProgress');
     const exitTimeSpan = document.getElementById('exitTimeToday');
     
     if (weeklyHoursSpan) weeklyHoursSpan.innerText = weeklyTotal.toFixed(1);
-    if (remainingSpan) remainingSpan.innerText = remaining.toFixed(1);
+    if (todayHoursSpan) todayHoursSpan.innerText = todayHours.toFixed(1);
     if (progressFill) progressFill.style.width = percent + '%';
-    if (exitTimeSpan) exitTimeSpan.innerText = calculateExitTime(workSettings);
+    if (exitTimeSpan) exitTimeSpan.innerText = calculateExitTimeForHome(workSettings);
+    
+    // Estadísticas rápidas
+    const booksCount = (userData.books || []).length;
+    const watchedCount = (userData.series?.watched || []).length;
+    const productivity = weeklyTotal > 0 ? Math.min(100, (weeklyTotal / 40) * 100) : 0;
+    
+    const statsBooks = document.getElementById('statsBooks');
+    const statsWatched = document.getElementById('statsWatched');
+    const statsProductivity = document.getElementById('statsProductivity');
+    if (statsBooks) statsBooks.innerText = booksCount;
+    if (statsWatched) statsWatched.innerText = watchedCount;
+    if (statsProductivity) statsProductivity.innerText = Math.floor(productivity);
 }
 
-function updatePreviews() {
+async function updatePreviews() {
     const userData = getUserData();
     if (!userData) return;
     
-    const shoppingPreview = document.getElementById('shoppingPreview');
-    if (shoppingPreview) {
-        const items = userData.shopping || [];
-        if (items.length === 0) shoppingPreview.innerHTML = '<li><i class="fas fa-plus-circle"></i> Añade items con doble clic</li>';
-        else shoppingPreview.innerHTML = items.slice(0, 3).map(item => `<li><i class="fas fa-circle"></i> ${escapeHtml(item.name)}${item.completed ? ' ✓' : ''}</li>`).join('');
-    }
-    
+    // Libros preview con portadas
     const booksPreview = document.getElementById('booksPreview');
     if (booksPreview) {
         const books = userData.books || [];
-        if (books.length === 0) booksPreview.innerHTML = '<li><i class="fas fa-book-open"></i> Añade libros leídos</li>';
-        else booksPreview.innerHTML = books.slice(0, 3).map(book => `<li><i class="fas fa-check-circle"></i> ${escapeHtml(book.title)}</li>`).join('');
+        if (books.length === 0) {
+            booksPreview.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-book-open"></i> Añade libros leídos</div>';
+        } else {
+            const previewHtml = await Promise.all(books.slice(0, 4).map(async (book) => {
+                let coverUrl = '';
+                try {
+                    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(book.title)}&maxResults=1`);
+                    const data = await response.json();
+                    if (data.items && data.items[0]?.volumeInfo?.imageLinks?.thumbnail) {
+                        coverUrl = data.items[0].volumeInfo.imageLinks.thumbnail;
+                    }
+                } catch(e) {}
+                return `<div class="preview-item">${coverUrl ? `<img src="${coverUrl}" onerror="this.src=''">` : '<i class="fas fa-book" style="font-size: 2rem; color: var(--accent);"></i>'}<span>${escapeHtml(book.title.substring(0, 15))}</span></div>`;
+            }));
+            booksPreview.innerHTML = previewHtml.join('');
+        }
     }
     
+    // Series preview con portadas
     const seriesPreview = document.getElementById('seriesPreview');
     if (seriesPreview) {
-        const pending = userData.series?.pending || [];
         const watched = userData.series?.watched || [];
-        if (pending.length === 0 && watched.length === 0) seriesPreview.innerHTML = '<li><i class="fas fa-tv"></i> Añade series</li>';
-        else seriesPreview.innerHTML = `<li><i class="fas fa-clock"></i> Pendientes: ${pending.length}</li><li><i class="fas fa-check-double"></i> Vistas: ${watched.length}</li>`;
+        if (watched.length === 0) {
+            seriesPreview.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-tv"></i> Añade series vistas</div>';
+        } else {
+            const previewHtml = await Promise.all(watched.slice(0, 4).map(async (series) => {
+                let posterUrl = '';
+                try {
+                    const response = await fetch(`https://api.themoviedb.org/3/search/tv?api_key=d9940498503065e949b5ee26c152eaa1&query=${encodeURIComponent(series.title)}`);
+                    const data = await response.json();
+                    if (data.results && data.results[0]?.poster_path) {
+                        posterUrl = `https://image.tmdb.org/t/p/w92${data.results[0].poster_path}`;
+                    }
+                } catch(e) {}
+                return `<div class="preview-item">${posterUrl ? `<img src="${posterUrl}" onerror="this.src=''">` : '<i class="fas fa-tv" style="font-size: 2rem; color: var(--accent);"></i>'}<span>${escapeHtml(series.title.substring(0, 15))}</span></div>`;
+            }));
+            seriesPreview.innerHTML = previewHtml.join('');
+        }
+    }
+    
+    // Shopping preview
+    const shoppingPreview = document.getElementById('shoppingPreview');
+    if (shoppingPreview) {
+        const items = userData.shopping || [];
+        if (items.length === 0) {
+            shoppingPreview.innerHTML = '<li><i class="fas fa-plus-circle"></i> Añade items con doble clic</li>';
+        } else {
+            shoppingPreview.innerHTML = items.slice(0, 5).map(item => `<li><i class="fas ${item.completed ? 'fa-check-circle' : 'fa-circle'}" style="color: ${item.completed ? 'var(--success)' : 'var(--accent)'}"></i> ${escapeHtml(item.name)}</li>`).join('');
+        }
     }
 }
 
@@ -110,6 +156,7 @@ function initDockActive() {
         if (page === 'shopping' && currentPage === 'shopping.html') item.classList.add('active');
         if (page === 'books' && currentPage === 'books.html') item.classList.add('active');
         if (page === 'series' && currentPage === 'series.html') item.classList.add('active');
+        if (page === 'stats' && currentPage === 'stats.html') item.classList.add('active');
     });
 }
 
@@ -121,5 +168,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initWidgetDoubleClick();
     initDockActive();
     document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
-    setInterval(updateHomeStats, 60000);
+    setInterval(() => { updateHomeStats(); }, 60000);
 });

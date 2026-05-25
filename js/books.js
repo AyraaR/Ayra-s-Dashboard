@@ -17,6 +17,7 @@ function saveBooks() {
         userData.toReadBooks = toReadBooks;
         userData.books = readBooks;
         saveUserData(userData);
+        if (window.updatePreviews) window.updatePreviews();
     }
 }
 
@@ -53,7 +54,7 @@ async function searchBooks() {
             `;
         }).join('');
     } catch (error) {
-        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">Error al buscar libros</div>';
+        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">Error al buscar libros. Intenta de nuevo.</div>';
     }
 }
 
@@ -140,6 +141,11 @@ function initDockActive() {
         const page = item.getAttribute('data-page');
         item.classList.remove('active');
         if (page === 'books' && currentPage === 'books.html') item.classList.add('active');
+        if (page === 'home' && currentPage === 'home.html') item.classList.add('active');
+        if (page === 'calculator' && currentPage === 'calculator.html') item.classList.add('active');
+        if (page === 'shopping' && currentPage === 'shopping.html') item.classList.add('active');
+        if (page === 'series' && currentPage === 'series.html') item.classList.add('active');
+        if (page === 'stats' && currentPage === 'stats.html') item.classList.add('active');
     });
 }
 
@@ -160,3 +166,4 @@ window.addToRead = addToRead;
 window.moveToRead = moveToRead;
 window.removeFromToRead = removeFromToRead;
 window.removeFromRead = removeFromRead;
+window.searchBooks = searchBooks;

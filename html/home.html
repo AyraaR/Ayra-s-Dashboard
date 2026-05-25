@@ -10,57 +10,72 @@
 </head>
 <body>
     <header class="glass-header">
-        <div class="logo-small">
-            <i class="fas fa-robot"></i>
-            <span>Jarvis</span>
-        </div>
-        <div class="user-info">
-            <span id="greeting"></span>
-            <button id="logoutBtn" class="btn-icon"><i class="fas fa-sign-out-alt"></i></button>
-        </div>
+        <div class="logo-small"><i class="fas fa-robot"></i><span>Jarvis</span></div>
+        <div class="user-info"><span id="greeting"></span><button id="logoutBtn" class="btn-icon"><i class="fas fa-sign-out-alt"></i></button></div>
     </header>
 
     <main class="dashboard-grid">
+        <!-- Widget Control Laboral -->
         <div class="glass-card widget" data-page="calculator.html">
             <h2><i class="fas fa-briefcase"></i> Control Laboral</h2>
             <div class="work-summary">
                 <div class="summary-stat">
-                    <span>Horas trabajadas esta semana</span>
-                    <strong id="weeklyHours">0.0</strong>
-                    <span>/ 40</span>
+                    <span>Horas trabajadas hoy</span>
+                    <strong id="todayHours">0.0</strong>
                 </div>
                 <div class="summary-stat">
-                    <span>Horas restantes</span>
-                    <strong id="remainingWeekly">0.0</strong>
+                    <span>Horas esta semana</span>
+                    <strong id="weeklyHours">0.0</strong>
+                    <span>/ 40</span>
                 </div>
                 <div class="summary-stat">
                     <span>Hora de salida hoy</span>
                     <strong id="exitTimeToday">--:--</strong>
                 </div>
-                <div class="progress-bar">
-                    <div id="weeklyProgress" class="progress-fill"></div>
+                <div class="progress-bar"><div id="weeklyProgress" class="progress-fill"></div></div>
+            </div>
+            <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para calculadora</p>
+        </div>
+
+        <!-- Widget Estadísticas -->
+        <div class="glass-card widget" data-page="stats.html">
+            <h2><i class="fas fa-chart-line"></i> Estadísticas</h2>
+            <div class="work-summary">
+                <div class="summary-stat">
+                    <span>Total libros</span>
+                    <strong id="statsBooks">0</strong>
+                </div>
+                <div class="summary-stat">
+                    <span>Series vistas</span>
+                    <strong id="statsWatched">0</strong>
+                </div>
+                <div class="summary-stat">
+                    <span>Productividad</span>
+                    <strong id="statsProductivity">0</strong>
+                    <span>%</span>
                 </div>
             </div>
-            <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;">
-                <i class="fas fa-hand-pointer"></i> Doble clic para calculadora
-            </p>
+            <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para ver detalles</p>
         </div>
 
+        <!-- Widget Libros con portadas -->
+        <div class="glass-card widget" data-page="books.html">
+            <h2><i class="fas fa-book"></i> Libros Recientes</h2>
+            <div id="booksPreview" class="widget-preview"></div>
+            <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>
+        </div>
+
+        <!-- Widget Series con portadas -->
+        <div class="glass-card widget" data-page="series.html">
+            <h2><i class="fas fa-tv"></i> Series Recientes</h2>
+            <div id="seriesPreview" class="widget-preview"></div>
+            <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>
+        </div>
+
+        <!-- Widget Lista de Compras -->
         <div class="glass-card widget" data-page="shopping.html">
             <h2><i class="fas fa-shopping-cart"></i> Lista de Compras</h2>
-            <ul id="shoppingPreview" class="task-list"><li><i class="fas fa-spinner fa-pulse"></i> Cargando...</li></ul>
-            <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>
-        </div>
-
-        <div class="glass-card widget" data-page="books.html">
-            <h2><i class="fas fa-book"></i> Libros</h2>
-            <ul id="booksPreview" class="task-list"><li><i class="fas fa-spinner fa-pulse"></i> Cargando...</li></ul>
-            <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>
-        </div>
-
-        <div class="glass-card widget" data-page="series.html">
-            <h2><i class="fas fa-tv"></i> Series y Anime</h2>
-            <ul id="seriesPreview" class="task-list"><li><i class="fas fa-spinner fa-pulse"></i> Cargando...</li></ul>
+            <ul id="shoppingPreview" class="task-list"><li><i class="fas fa-plus-circle"></i> Cargando...</li></ul>
             <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>
         </div>
     </main>
@@ -71,10 +86,12 @@
         <a href="shopping.html" class="dock-item" data-page="shopping"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
         <a href="books.html" class="dock-item" data-page="books"><i class="fas fa-book"></i><span>Libros</span></a>
         <a href="series.html" class="dock-item" data-page="series"><i class="fas fa-tv"></i><span>Series</span></a>
+        <a href="stats.html" class="dock-item" data-page="stats"><i class="fas fa-chart-line"></i><span>Stats</span></a>
     </div>
 
     <script src="../js/auth.js"></script>
     <script src="../js/common.js"></script>
+    <script src="../js/calculator.js"></script>
     <script src="../js/home.js"></script>
 </body>
 </html>
