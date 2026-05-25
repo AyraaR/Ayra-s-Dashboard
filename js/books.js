@@ -25,18 +25,17 @@ async function searchBooks() {
     const query = document.getElementById('searchBookInput').value.trim();
     const resultsDiv = document.getElementById('searchResults');
     
-    console.log('Buscando:', query);
-    
     if (!query) {
-        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--warning);">✏️ Escribe algo para buscar</div>';
+        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--warning);">✏️ Escribe el título de un libro</div>';
         return;
     }
     
-    resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-pulse"></i> Buscando libros...</div>';
+    resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-pulse"></i> Buscando en Google Books...</div>';
     
     try {
-        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=8&langRestrict=es`;
-        console.log('URL:', url);
+        // URL CORRECTA de Google Books API
+        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`;
+        console.log('Buscando en:', url);
         
         const response = await fetch(url);
         const data = await response.json();
@@ -54,14 +53,14 @@ async function searchBooks() {
             const authors = info.authors ? info.authors.join(', ') : 'Autor desconocido';
             const cover = info.imageLinks?.thumbnail || '';
             const description = info.description ? info.description.substring(0, 120) + '...' : '';
-            const publishedDate = info.publishedDate || '';
+            const publishedDate = info.publishedDate ? info.publishedDate.substring(0, 4) : '';
             
             return `
                 <div style="display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); border-radius: 16px; margin-bottom: 10px;">
                     ${cover ? `<img src="${cover}" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px;">` : '<div style="width:60px;height:80px;background:rgba(255,255,255,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="fas fa-book" style="font-size: 2rem;"></i></div>'}
                     <div style="flex: 1;">
                         <strong style="color: var(--accent);">${escapeHtml(title)}</strong>
-                        <small style="display: block; color: var(--text-secondary);">${escapeHtml(authors)} ${publishedDate ? `(${publishedDate.substring(0, 4)})` : ''}</small>
+                        <small style="display: block; color: var(--text-secondary);">${escapeHtml(authors)} ${publishedDate ? `(${publishedDate})` : ''}</small>
                         ${description ? `<p style="font-size: 0.75rem; margin-top: 5px; color: var(--text-secondary);">${escapeHtml(description)}</p>` : ''}
                         <div style="margin-top: 8px; display: flex; gap: 8px;">
                             <button onclick="addToToRead('${escapeHtml(title).replace(/'/g, "\\'")}', '${escapeHtml(authors).replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 6px 12px;"><i class="fas fa-clock"></i> Quiero leer</button>
