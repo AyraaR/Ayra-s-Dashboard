@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis - Tareas de Casa</title>
+    <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="glass-header">
+        <div class="logo-small"><i class="fas fa-broom"></i><span>Jarvis - Tareas del Hogar</span></div>
+        <div class="user-info"><span id="userName"></span><button id="logoutBtn" class="btn-icon"><i class="fas fa-sign-out-alt"></i></button></div>
+    </header>
+
+    <main class="list-container">
+        <!-- Resumen de productividad -->
+        <div class="glass-card" style="margin-bottom: 24px;">
+            <h2><i class="fas fa-chart-line"></i> Productividad del Hogar</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="todayCompleted">0</div>
+                    <div class="stat-label">Tareas completadas hoy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="todayPending">0</div>
+                    <div class="stat-label">Pendientes hoy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completionRate">0</div>
+                    <div class="stat-label">% Completado hoy</div>
+                </div>
+            </div>
+            <div class="progress-bar" style="margin-top: 15px;">
+                <div id="tasksProgress" class="progress-fill" style="width: 0%;"></div>
+            </div>
+            <p id="productivityMessage" style="text-align: center; margin-top: 10px;"></p>
+        </div>
+
+        <!-- Añadir nueva tarea -->
+        <div class="glass-card" style="margin-bottom: 24px;">
+            <h2><i class="fas fa-plus-circle"></i> Nueva Tarea</h2>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <input type="text" id="taskName" placeholder="Ej: Limpiar baño, Regar plantas..." class="glass-input" style="flex: 2;">
+                <select id="taskFrequency" class="glass-input" style="width: auto;">
+                    <option value="daily">📅 Diaria</option>
+                    <option value="every2days">🔄 Cada 2 días</option>
+                    <option value="weekly">📆 Semanal</option>
+                    <option value="monthly">📅 Mensual</option>
+                </select>
+                <select id="taskRoom" class="glass-input" style="width: auto;">
+                    <option value="general">🏠 General</option>
+                    <option value="kitchen">🍳 Cocina</option>
+                    <option value="bathroom">🚽 Baño</option>
+                    <option value="bedroom">🛏️ Dormitorio</option>
+                    <option value="living">🛋️ Salón</option>
+                    <option value="outside">🌳 Exterior</option>
+                </select>
+                <button id="addTaskBtn" class="btn-primary"><i class="fas fa-save"></i> Añadir</button>
+            </div>
+        </div>
+
+        <!-- Tareas del día (para hoy) -->
+        <div class="glass-card" style="margin-bottom: 24px;">
+            <h2><i class="fas fa-sun"></i> Tareas para Hoy</h2>
+            <ul id="todayTasksList" class="items-list"></ul>
+            <button id="resetTodayTasksBtn" class="btn-secondary" style="margin-top: 10px;"><i class="fas fa-undo"></i> Reiniciar tareas de hoy</button>
+        </div>
+
+        <!-- Todas las tareas (gestión) -->
+        <div class="glass-card">
+            <h2><i class="fas fa-list"></i> Mis Tareas</h2>
+            <div id="allTasksList" class="items-list"></div>
+        </div>
+    </main>
+
+    <div class="floating-dock">
+        <a href="home.html" class="dock-item"><i class="fas fa-home"></i><span>Inicio</span></a>
+        <a href="calculator.html" class="dock-item"><i class="fas fa-calculator"></i><span>Horas</span></a>
+        <a href="shopping.html" class="dock-item"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
+        <a href="books.html" class="dock-item"><i class="fas fa-book"></i><span>Libros</span></a>
+        <a href="series.html" class="dock-item"><i class="fas fa-tv"></i><span>Series</span></a>
+        <a href="sports.html" class="dock-item"><i class="fas fa-heartbeat"></i><span>Deporte</span></a>
+        <a href="nutrition.html" class="dock-item"><i class="fas fa-apple-alt"></i><span>Comida</span></a>
+        <a href="crafts.html" class="dock-item"><i class="fas fa-palette"></i><span>Arte</span></a>
+        <a href="tasks.html" class="dock-item active"><i class="fas fa-check-circle"></i><span>Tareas</span></a>
+        <a href="stats.html" class="dock-item"><i class="fas fa-chart-line"></i><span>Stats</span></a>
+    </div>
+
+    <script src="../js/auth.js"></script>
+    <script src="../js/common.js"></script>
+    <script src="../js/tasks.js"></script>
+</body>
+</html>

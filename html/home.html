@@ -106,9 +106,23 @@
                     <span>Recetas</span>
                     <strong id="previewRecipes">0</strong>
                 </div>
-                <div class="summary-stat" style="flex: 1;">
-                    <span>Tareas</span>
-                    <strong id="previewChores">0</strong>
+            </div>
+            <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>
+        </div>
+        <!-- Widget Tareas del Hogar -->
+        <div class="glass-card widget" data-page="tasks.html">
+            <h2><i class="fas fa-check-circle"></i> Tareas de Hoy</h2>
+            <div id="tasksPreview" class="work-summary">
+                <div class="summary-stat">
+                    <span>Completadas hoy</span>
+                    <strong id="previewTasksCompleted">0</strong>
+                </div>
+                <div class="summary-stat">
+                    <span>Pendientes</span>
+                    <strong id="previewTasksPending">0</strong>
+                </div>
+                <div class="progress-bar">
+                    <div id="tasksWidgetProgress" class="progress-fill" style="width: 0%;"></div>
                 </div>
             </div>
             <p style="font-size: 0.7rem; text-align: center; margin-top: 12px; opacity: 0.6;"><i class="fas fa-hand-pointer"></i> Doble clic para gestionar</p>

@@ -1,7 +1,6 @@
 let paintings = [];
 let crochetProjects = [];
 let recipes = [];
-let chores = [];
 
 let activeTab = 'paintings';
 
@@ -11,12 +10,10 @@ function loadCrafts() {
         paintings = userData.paintings || [];
         crochetProjects = userData.crochetProjects || [];
         recipes = userData.recipes || [];
-        chores = userData.chores || [];
     }
     renderPaintings();
     renderCrochet();
     renderRecipes();
-    renderChores();
 }
 
 function saveCrafts() {
@@ -25,10 +22,10 @@ function saveCrafts() {
         userData.paintings = paintings;
         userData.crochetProjects = crochetProjects;
         userData.recipes = recipes;
-        userData.chores = chores;
         saveUserData(userData);
     }
     if (window.updateStats) window.updateStats();
+    if (window.updatePreviews) window.updatePreviews();
 }
 
 // ==================== CUADROS ====================
@@ -240,120 +237,6 @@ function renderRecipes() {
     `).join('');
 }
 
-// ==================== TAREAS CASA ====================
-function addChore() {
-    const name = document.getElementById('choreName').value.trim();
-    const frequency = document.getElementById('choreFrequency').value;
-    
-    if (!name) {
-        showToast('❌ Introduce una tarea', true);
-        return;
-    }
-    
-    chores.unshift({
-        id: Date.now(),
-        name: name,
-        frequency: frequency,
-        completed: false,
-        lastCompleted: null,
-        createdAt: new Date().toISOString()
-    });
-    
-    saveCrafts();
-    renderChores();
-    clearChoreForm();
-    showToast(`🧹 Tarea "${name}" añadida`);
-}
-
-function clearChoreForm() {
-    document.getElementById('choreName').value = '';
-}
-
-function toggleChoreComplete(index) {
-    chores[index].completed = !chores[index].completed;
-    if (chores[index].completed) {
-        chores[index].lastCompleted = new Date().toISOString();
-    }
-    saveCrafts();
-    renderChores();
-    
-    if (chores[index].completed) {
-        showToast(`✅ ${chores[index].name} completada!`);
-    }
-}
-
-function deleteChore(index) {
-    if (confirm('¿Eliminar esta tarea?')) {
-        chores.splice(index, 1);
-        saveCrafts();
-        renderChores();
-        showToast('🗑️ Tarea eliminada');
-    }
-}
-
-function renderChores() {
-    const container = document.getElementById('choresList');
-    if (!container) return;
-    
-    const frequencyIcon = {
-        'daily': '📅 Diaria',
-        'weekly': '📆 Semanal',
-        'monthly': '📅 Mensual'
-    };
-    
-    const pendingChores = chores.filter(c => !c.completed);
-    const completedChores = chores.filter(c => c.completed);
-    
-    if (chores.length === 0) {
-        container.innerHTML = '<li style="text-align: center; padding: 30px;">🧹 No hay tareas pendientes</li>';
-        return;
-    }
-    
-    let html = '<h3 style="margin: 10px 0;">📋 Pendientes</h3>';
-    if (pendingChores.length === 0) {
-        html += '<li style="text-align: center; padding: 10px;">✨ ¡Todas las tareas completadas!</li>';
-    } else {
-        html += pendingChores.map((chore, originalIdx) => {
-            const idx = chores.findIndex(c => c.id === chore.id);
-            return `
-                <li style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--glass-border);">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <i class="far fa-circle" style="color: var(--accent); cursor: pointer;" onclick="toggleChoreComplete(${idx})"></i>
-                        <div>
-                            <strong>${escapeHtml(chore.name)}</strong>
-                            <small style="display: block;">${frequencyIcon[chore.frequency]}</small>
-                        </div>
-                    </div>
-                    <button onclick="deleteChore(${idx})" class="btn-danger"><i class="fas fa-trash"></i></button>
-                </li>
-            `;
-        }).join('');
-    }
-    
-    html += '<h3 style="margin: 20px 0 10px 0;">✅ Completadas recientemente</h3>';
-    if (completedChores.length === 0) {
-        html += '<li style="text-align: center; padding: 10px;">No hay tareas completadas aún</li>';
-    } else {
-        html += completedChores.slice(0, 10).map(chore => {
-            const idx = chores.findIndex(c => c.id === chore.id);
-            return `
-                <li style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--glass-border); opacity: 0.7;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <i class="fas fa-check-circle" style="color: var(--success);"></i>
-                        <div>
-                            <strong>${escapeHtml(chore.name)}</strong>
-                            <small style="display: block;">${chore.lastCompleted ? new Date(chore.lastCompleted).toLocaleDateString() : ''}</small>
-                        </div>
-                    </div>
-                    <button onclick="deleteChore(${idx})" class="btn-danger"><i class="fas fa-trash"></i></button>
-                </li>
-            `;
-        }).join('');
-    }
-    
-    container.innerHTML = html;
-}
-
 // ==================== PESTAÑAS ====================
 function switchTab(tab) {
     activeTab = tab;
@@ -361,13 +244,11 @@ function switchTab(tab) {
     document.getElementById('paintingsSection').style.display = tab === 'paintings' ? 'block' : 'none';
     document.getElementById('crochetSection').style.display = tab === 'crochet' ? 'block' : 'none';
     document.getElementById('bakingSection').style.display = tab === 'baking' ? 'block' : 'none';
-    document.getElementById('choresSection').style.display = tab === 'chores' ? 'block' : 'none';
     
     const tabs = {
         paintings: document.getElementById('tabPaintings'),
         crochet: document.getElementById('tabCrochet'),
-        baking: document.getElementById('tabBaking'),
-        chores: document.getElementById('TabChores')
+        baking: document.getElementById('tabBaking')
     };
     
     for (let [key, btn] of Object.entries(tabs)) {
@@ -376,14 +257,6 @@ function switchTab(tab) {
         }
     }
 }
-
-// ==================== SPOTIFY (opcional) ====================
-// Spotify API necesita autenticación OAuth
-// Para usarla gratis tendrías que:
-// 1. Registrarte en developer.spotify.com
-// 2. Crear una app y obtener Client ID
-// 3. Implementar OAuth flow
-// Por ahora mostramos un placeholder
 
 function initDockActive() {
     const currentPage = window.location.pathname.split('/').pop();
@@ -401,17 +274,13 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCrafts();
     initDockActive();
     
-    // Botones tabs
     document.getElementById('tabPaintings')?.addEventListener('click', () => switchTab('paintings'));
     document.getElementById('tabCrochet')?.addEventListener('click', () => switchTab('crochet'));
     document.getElementById('tabBaking')?.addEventListener('click', () => switchTab('baking'));
-    document.getElementById('TabChores')?.addEventListener('click', () => switchTab('chores'));
     
-    // Botones añadir
     document.getElementById('addPaintingBtn')?.addEventListener('click', addPainting);
     document.getElementById('addCrochetBtn')?.addEventListener('click', addCrochet);
     document.getElementById('addRecipeBtn')?.addEventListener('click', addRecipe);
-    document.getElementById('addChoreBtn')?.addEventListener('click', addChore);
     
     document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
 });
@@ -419,6 +288,4 @@ document.addEventListener('DOMContentLoaded', () => {
 window.deletePainting = deletePainting;
 window.deleteCrochet = deleteCrochet;
 window.deleteRecipe = deleteRecipe;
-window.deleteChore = deleteChore;
 window.updateCrochetProgress = updateCrochetProgress;
-window.toggleChoreComplete = toggleChoreComplete;
