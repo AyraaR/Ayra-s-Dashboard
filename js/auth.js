@@ -1,7 +1,6 @@
 const USERS_KEY = 'jarvis_users';
 const SESSION_KEY = 'jarvis_session';
 
-// Datos iniciales por defecto para nuevos usuarios
 function getDefaultUserData() {
     return {
         workSettings: {
@@ -14,10 +13,8 @@ function getDefaultUserData() {
         },
         shopping: [],
         books: [],
-        series: {
-            pending: [],
-            watched: []
-        }
+        toReadBooks: [],
+        series: { pending: [], watched: [] }
     };
 }
 
@@ -55,11 +52,7 @@ function loginUser(username, password) {
     if (!users[username] || users[username].password !== password) {
         return { success: false, error: 'Usuario o contraseña incorrectos' };
     }
-    const session = {
-        username: username,
-        loginTime: new Date().toISOString()
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ username: username, loginTime: new Date().toISOString() }));
     return { success: true };
 }
 
@@ -74,10 +67,7 @@ function getCurrentUser() {
     const parsed = JSON.parse(session);
     const users = getUsers();
     if (!users[parsed.username]) return null;
-    return {
-        username: parsed.username,
-        data: users[parsed.username].data
-    };
+    return { username: parsed.username, data: users[parsed.username].data };
 }
 
 function isAuthenticated() {

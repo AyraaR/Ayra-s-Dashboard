@@ -10,7 +10,6 @@
 </head>
 <body>
     <div class="auth-container" id="authContainer">
-        <!-- Login form -->
         <div id="loginForm" class="glass-card auth-card">
             <div class="logo">
                 <i class="fas fa-robot"></i>
@@ -26,7 +25,6 @@
             </div>
         </div>
 
-        <!-- Register form -->
         <div id="registerForm" class="glass-card auth-card" style="display: none;">
             <div class="logo">
                 <i class="fas fa-robot"></i>
@@ -99,7 +97,6 @@
             }
         });
 
-        // Si ya está logueado, redirigir
         if (isAuthenticated()) {
             window.location.href = '/html/home.html';
         }
