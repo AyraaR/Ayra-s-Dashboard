@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis - Deporte</title>
+    <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="glass-header">
+        <div class="logo-small"><i class="fas fa-robot"></i><span>Jarvis - Deporte</span></div>
+        <div class="user-info"><span id="userName"></span><button id="logoutBtn" class="btn-icon"><i class="fas fa-sign-out-alt"></i></button></div>
+    </header>
+
+    <main class="list-container">
+        <!-- Músculos -->
+        <div class="glass-card" style="margin-bottom: 24px;">
+            <h2><i class="fas fa-dumbbell"></i> Estado de Músculos</h2>
+            <div class="stats-grid" id="muscleStats">
+                <!-- Se llena con JS -->
+            </div>
+        </div>
+
+        <!-- Añadir entrenamiento -->
+        <div class="glass-card" style="margin-bottom: 24px;">
+            <h2><i class="fas fa-plus-circle"></i> Registrar Entrenamiento</h2>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <select id="exerciseSelect" class="glass-input" style="flex: 1;">
+                    <option value="pecho">Pecho - Press banca</option>
+                    <option value="espalda">Espalda - Dominadas</option>
+                    <option value="piernas">Piernas - Sentadillas</option>
+                    <option value="hombros">Hombros - Press militar</option>
+                    <option value="biceps">Bíceps - Curl</option>
+                    <option value="triceps">Tríceps - Fondos</option>
+                    <option value="core">Core - Plancha</option>
+                    <option value="cardio">Cardio - Correr</option>
+                </select>
+                <select id="intensitySelect" class="glass-input" style="width: auto;">
+                    <option value="bajo">Bajo</option>
+                    <option value="medio">Medio</option>
+                    <option value="alto">Alto</option>
+                </select>
+                <button id="addWorkoutBtn" class="btn-primary"><i class="fas fa-save"></i> Registrar</button>
+            </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="glass-card">
+            <h2><i class="fas fa-history"></i> Historial de Entrenamientos</h2>
+            <ul id="workoutHistory" class="items-list"></ul>
+        </div>
+    </main>
+
+    <div class="floating-dock">
+        <a href="home.html" class="dock-item"><i class="fas fa-home"></i><span>Inicio</span></a>
+        <a href="calculator.html" class="dock-item"><i class="fas fa-calculator"></i><span>Horas</span></a>
+        <a href="shopping.html" class="dock-item"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
+        <a href="books.html" class="dock-item"><i class="fas fa-book"></i><span>Libros</span></a>
+        <a href="series.html" class="dock-item"><i class="fas fa-tv"></i><span>Series</span></a>
+        <a href="sports.html" class="dock-item active"><i class="fas fa-heartbeat"></i><span>Deporte</span></a>
+        <a href="stats.html" class="dock-item"><i class="fas fa-chart-line"></i><span>Stats</span></a>
+    </div>
+
+    <script src="../js/auth.js"></script>
+    <script src="../js/common.js"></script>
+    <script src="../js/sports.js"></script>
+</body>
+</html>

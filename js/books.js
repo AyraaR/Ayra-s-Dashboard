@@ -30,11 +30,11 @@ async function searchBooks() {
         return;
     }
     
-    resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-pulse"></i> Buscando en Google Books...</div>';
+    resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-pulse"></i> Buscando libros...</div>';
     
     try {
-        // URL CORRECTA de Google Books API
-        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`;
+        // Usando OpenLibrary API (sin problemas CORS)
+        const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10&fields=key,title,author_name,first_publish_year,cover_i,isbn`;
         console.log('Buscando en:', url);
         
         const response = await fetch(url);
@@ -42,26 +42,24 @@ async function searchBooks() {
         
         console.log('Respuesta:', data);
         
-        if (!data.items || data.items.length === 0) {
+        if (!data.docs || data.docs.length === 0) {
             resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;">📚 No se encontraron libros. Prueba con otro título.</div>';
             return;
         }
         
-        resultsDiv.innerHTML = data.items.map(book => {
-            const info = book.volumeInfo;
-            const title = info.title || 'Sin título';
-            const authors = info.authors ? info.authors.join(', ') : 'Autor desconocido';
-            const cover = info.imageLinks?.thumbnail || '';
-            const description = info.description ? info.description.substring(0, 120) + '...' : '';
-            const publishedDate = info.publishedDate ? info.publishedDate.substring(0, 4) : '';
+        resultsDiv.innerHTML = data.docs.map(book => {
+            const title = book.title || 'Sin título';
+            const authors = book.author_name ? book.author_name.join(', ') : 'Autor desconocido';
+            const year = book.first_publish_year || '';
+            const coverId = book.cover_i;
+            const coverUrl = coverId ? `https://covers.openlibrary.org/b/id/${coverId}-S.jpg` : '';
             
             return `
                 <div style="display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); border-radius: 16px; margin-bottom: 10px;">
-                    ${cover ? `<img src="${cover}" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px;">` : '<div style="width:60px;height:80px;background:rgba(255,255,255,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="fas fa-book" style="font-size: 2rem;"></i></div>'}
+                    ${coverUrl ? `<img src="${coverUrl}" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px;" onerror="this.src=''">` : '<div style="width:60px;height:80px;background:rgba(255,255,255,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="fas fa-book" style="font-size: 2rem;"></i></div>'}
                     <div style="flex: 1;">
                         <strong style="color: var(--accent);">${escapeHtml(title)}</strong>
-                        <small style="display: block; color: var(--text-secondary);">${escapeHtml(authors)} ${publishedDate ? `(${publishedDate})` : ''}</small>
-                        ${description ? `<p style="font-size: 0.75rem; margin-top: 5px; color: var(--text-secondary);">${escapeHtml(description)}</p>` : ''}
+                        <small style="display: block; color: var(--text-secondary);">${escapeHtml(authors)} ${year ? `(${year})` : ''}</small>
                         <div style="margin-top: 8px; display: flex; gap: 8px;">
                             <button onclick="addToToRead('${escapeHtml(title).replace(/'/g, "\\'")}', '${escapeHtml(authors).replace(/'/g, "\\'")}')" class="btn-secondary" style="padding: 6px 12px;"><i class="fas fa-clock"></i> Quiero leer</button>
                             <button onclick="addToRead('${escapeHtml(title).replace(/'/g, "\\'")}', '${escapeHtml(authors).replace(/'/g, "\\'")}')" class="btn-primary" style="padding: 6px 12px;"><i class="fas fa-check"></i> Ya leído</button>
@@ -73,7 +71,7 @@ async function searchBooks() {
         
     } catch (error) {
         console.error('Error:', error);
-        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">❌ Error al buscar libros. Verifica tu conexión a internet.</div>';
+        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">❌ Error al buscar libros. Verifica tu conexión.</div>';
     }
 }
 
