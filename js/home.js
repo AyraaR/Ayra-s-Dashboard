@@ -102,24 +102,38 @@ function updateHomeStats() {
     
     const statsBooks = document.getElementById('statsBooks');
     const statsWatched = document.getElementById('statsWatched');
-    const statsProductivity = document.getElementById('statsProductivity');
     const statsWorkouts = document.getElementById('statsWorkouts');
     
     if (statsBooks) statsBooks.innerText = (userData.books || []).length;
     if (statsWatched) statsWatched.innerText = (userData.series?.watched || []).length;
     if (statsWorkouts) statsWorkouts.innerText = (userData.workouts || []).length;
     
+    // PRODUCTIVIDAD: solo cuenta si NO es día de descanso planificado
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const today = dayNames[new Date().getDay() - 1];
     let expectedToday = 8;
+    let isRestDay = false;
+    
     if (today && userData.workSettings?.[today]) {
         const dayConfig = userData.workSettings[today];
         const dayIndex = dayNames.indexOf(today);
-        if (dayConfig?.isVacation) expectedToday = 8;
-        else if (dayConfig?.isTelework) expectedToday = dayIndex === 4 ? 8 : 9;
-        else if (dayConfig?.customHours) expectedToday = dayConfig.customHours;
+        if (dayConfig?.isVacation) {
+            expectedToday = 8;
+            isRestDay = true; // Vacaciones = día de descanso
+        } else if (dayConfig?.isTelework) {
+            expectedToday = dayIndex === 4 ? 8 : 9;
+        } else if (dayConfig?.customHours) {
+            expectedToday = dayConfig.customHours;
+        }
     }
-    const productivity = expectedToday > 0 ? Math.min(100, (todayHours / expectedToday) * 100) : 0;
+    
+    // Si es fin de semana o vacaciones, productividad = 100% (no se penaliza)
+    let productivity = 100;
+    if (!isRestDay && new Date().getDay() !== 0 && new Date().getDay() !== 6) {
+        productivity = expectedToday > 0 ? Math.min(100, (todayHours / expectedToday) * 100) : 0;
+    }
+    
+    const statsProductivity = document.getElementById('statsProductivity');
     if (statsProductivity) statsProductivity.innerText = Math.floor(productivity);
 }
 
@@ -206,6 +220,17 @@ async function updatePreviews() {
             `).join('');
         }
     }
+
+        // Crafts preview
+    const previewPaintings = document.getElementById('previewPaintings');
+    const previewCrochet = document.getElementById('previewCrochet');
+    const previewRecipes = document.getElementById('previewRecipes');
+    const previewChores = document.getElementById('previewChores');
+
+    if (previewPaintings) previewPaintings.innerText = (userData.paintings || []).length;
+    if (previewCrochet) previewCrochet.innerText = (userData.crochetProjects || []).length;
+    if (previewRecipes) previewRecipes.innerText = (userData.recipes || []).length;
+    if (previewChores) previewChores.innerText = (userData.chores || []).filter(c => !c.completed).length;
 }
 
 function initWidgetDoubleClick() {
@@ -237,3 +262,27 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
     setInterval(() => { updateHomeStats(); }, 60000);
 });
+
+// DeepSeek quick chat
+async function sendQuickMessage() {
+    const input = document.getElementById('quickChatInput');
+    const responseDiv = document.getElementById('quickChatResponse');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    responseDiv.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Pensando...';
+    input.value = '';
+    
+    const reply = await sendMessageToDeepSeek(message);
+    
+    if (reply) {
+        responseDiv.innerHTML = `<i class="fas fa-robot" style="color: var(--accent);"></i> ${reply.substring(0, 150)}${reply.length > 150 ? '...' : ''}`;
+    } else {
+        responseDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error al conectar con Jarvis';
+    }
+}
+
+// Añadir event listeners en DOMContentLoaded
+document.getElementById('quickChatSend')?.addEventListener('click', sendQuickMessage);
+document.getElementById('quickChatInput')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendQuickMessage(); });

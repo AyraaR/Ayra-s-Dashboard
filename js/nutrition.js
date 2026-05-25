@@ -1,12 +1,13 @@
 let foodEntries = [];
-let nutritionGoal = { currentWeight: 0, goalWeight: 0, targetCalories: 1800 };
+let nutritionGoal = { currentWeight: 0, goalWeight: 0, targetCalories: 1800, activityLevel: 'moderate' };
 
 function loadNutrition() {
     const userData = getUserData();
     if (userData) {
         foodEntries = userData.foodEntries || [];
-        nutritionGoal = userData.nutritionGoal || { currentWeight: 0, goalWeight: 0, targetCalories: 1800 };
+        nutritionGoal = userData.nutritionGoal || { currentWeight: 0, goalWeight: 0, targetCalories: 1800, activityLevel: 'moderate' };
     }
+    calculateRecommendedCalories();
     renderNutrition();
 }
 
@@ -17,6 +18,68 @@ function saveNutrition() {
         userData.nutritionGoal = nutritionGoal;
         saveUserData(userData);
     }
+}
+
+// Calcular TMB (Harris-Benedict para mujer)
+function calculateBMR(weight, age = 30, height = 165) {
+    // 655.1 + (9.563 × peso en kg) + (1.85 × altura en cm) - (4.676 × edad en años)
+    return Math.round(655.1 + (9.563 * weight) + (1.85 * height) - (4.676 * age));
+}
+
+// Calcular calorías quemadas por entrenamiento
+function calculateCaloriesBurned(workout) {
+    // Estimación basada en volumen (kg * series * reps)
+    const volume = workout.weight * workout.sets * workout.reps;
+    if (workout.muscle === 'cardio') {
+        return Math.round(volume * 0.3);
+    }
+    return Math.round(volume * 0.2);
+}
+
+function calculateRecommendedCalories() {
+    const weight = nutritionGoal.currentWeight;
+    if (!weight || weight <= 0) return;
+    
+    const bmr = calculateBMR(weight);
+    let tdee = bmr;
+    
+    // Multiplicador por actividad
+    const activityMultipliers = {
+        sedentary: 1.2,   // poco o nada de ejercicio
+        light: 1.375,     // ejercicio ligero 1-3 días/semana
+        moderate: 1.55,   // ejercicio moderado 3-5 días/semana
+        active: 1.725,    // ejercicio intenso 6-7 días/semana
+        very_active: 1.9  // ejercicio muy intenso + trabajo físico
+    };
+    
+    tdee = Math.round(bmr * (activityMultipliers[nutritionGoal.activityLevel] || 1.55));
+    
+    // Déficit para perder peso (500 kcal/día = 0.5kg/semana)
+    const deficit = 500;
+    const recommendedDeficit = Math.max(1200, tdee - deficit);
+    
+    nutritionGoal.tdee = tdee;
+    nutritionGoal.recommendedCalories = recommendedDeficit;
+    
+    const goalInfo = document.getElementById('goalInfo');
+    if (goalInfo) {
+        goalInfo.innerHTML = `
+            📊 TMB: ${bmr} kcal | Gasto diario: ${tdee} kcal<br>
+            🎯 Para déficit (perder 0.5kg/semana): ${recommendedDeficit} kcal/día<br>
+            ⚠️ No bajar de 1200 kcal sin supervisión médica
+        `;
+    }
+    
+    return recommendedDeficit;
+}
+
+function getTodayCaloriesBurned() {
+    const userData = getUserData();
+    if (!userData) return 0;
+    const workouts = userData.workouts || [];
+    const today = new Date().toDateString();
+    const todayWorkouts = workouts.filter(w => new Date(w.date).toDateString() === today);
+    return todayWorkouts.reduce((sum, w) => sum + calculateCaloriesBurned(w), 0);
 }
 
 function addFood() {
@@ -75,32 +138,28 @@ function renderNutrition() {
     const totalCarbs = todayEntries.reduce((sum, e) => sum + (e.carbs || 0), 0);
     const totalFat = todayEntries.reduce((sum, e) => sum + (e.fat || 0), 0);
     
+    const burnedCalories = getTodayCaloriesBurned();
+    const recommendedTarget = nutritionGoal.recommendedCalories || 1800;
+    const adjustedTarget = recommendedTarget + burnedCalories;
+    
     document.getElementById('dailyCalories').innerText = totalCalories;
     document.getElementById('dailyProtein').innerText = totalProtein;
     document.getElementById('dailyCarbs').innerText = totalCarbs;
     document.getElementById('dailyFat').innerText = totalFat;
+    document.getElementById('burnedCalories').innerText = burnedCalories;
+    document.getElementById('adjustedTarget').innerText = adjustedTarget;
     
-    const target = nutritionGoal.targetCalories || 1800;
-    const percent = Math.min(100, (totalCalories / target) * 100);
+    const percent = Math.min(100, (totalCalories / adjustedTarget) * 100);
     document.getElementById('calorieProgress').style.width = percent + '%';
     
-    const remaining = target - totalCalories;
+    const remaining = adjustedTarget - totalCalories;
     const calorieMsg = document.getElementById('calorieMsg');
     if (remaining > 0) {
-        calorieMsg.innerHTML = `🍽️ Te quedan ${remaining} kcal para hoy (objetivo: ${target} kcal)`;
+        calorieMsg.innerHTML = `🍽️ Te quedan ${remaining} kcal para hoy (objetivo ajustado: ${adjustedTarget} kcal). 🔥 Has quemado ${burnedCalories} kcal con deporte.`;
         calorieMsg.style.color = 'var(--accent)';
     } else {
-        calorieMsg.innerHTML = `⚠️ Has superado tu objetivo en ${Math.abs(remaining)} kcal`;
+        calorieMsg.innerHTML = `⚠️ Has superado tu objetivo en ${Math.abs(remaining)} kcal. 🔥 Has quemado ${burnedCalories} kcal con deporte.`;
         calorieMsg.style.color = 'var(--warning)';
-    }
-    
-    // Goal info
-    const goalInfo = document.getElementById('goalInfo');
-    if (nutritionGoal.currentWeight > 0 && nutritionGoal.goalWeight > 0) {
-        const toLose = nutritionGoal.currentWeight - nutritionGoal.goalWeight;
-        goalInfo.innerHTML = `📊 Peso actual: ${nutritionGoal.currentWeight}kg · Objetivo: ${nutritionGoal.goalWeight}kg · Te quedan ${toLose.toFixed(1)}kg por perder`;
-    } else {
-        goalInfo.innerHTML = '📊 Configura tu peso y objetivo arriba';
     }
     
     // Historial
@@ -112,7 +171,7 @@ function renderNutrition() {
             <li style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--glass-border);">
                 <div>
                     <i class="fas fa-apple-alt" style="color: var(--accent);"></i>
-                    <strong>${entry.name}</strong><br>
+                    <strong>${escapeHtml(entry.name)}</strong><br>
                     <small>${entry.calories} kcal · P:${entry.protein || 0}g · C:${entry.carbs || 0}g · G:${entry.fat || 0}g</small>
                 </div>
                 <div>
@@ -128,17 +187,19 @@ function saveGoal() {
     const currentWeight = parseFloat(document.getElementById('currentWeight').value);
     const goalWeight = parseFloat(document.getElementById('goalWeight').value);
     const targetCalories = parseFloat(document.getElementById('targetCalories').value);
+    const activityLevel = document.getElementById('activityLevel').value;
     
     if (currentWeight) nutritionGoal.currentWeight = currentWeight;
     if (goalWeight) nutritionGoal.goalWeight = goalWeight;
     if (targetCalories) nutritionGoal.targetCalories = targetCalories;
+    if (activityLevel) nutritionGoal.activityLevel = activityLevel;
     
+    calculateRecommendedCalories();
     saveNutrition();
     renderNutrition();
     showToast('💾 Objetivo guardado');
 }
 
-// API de alimentos (Open Food Facts)
 async function searchFood() {
     const query = document.getElementById('searchFoodInput').value.trim();
     const resultsDiv = document.getElementById('foodSearchResults');
