@@ -48,33 +48,48 @@ function getCurrentDayIndex() {
     return day - 1;
 }
 
-// Calcular horas trabajadas desde entrada hasta salida (restando comida)
 function calculateWorkedHours(startTime, exitTime, dayIndex) {
     if (!startTime || !exitTime) return null;
     const [sH, sM] = startTime.split(':').map(Number);
     const [eH, eM] = exitTime.split(':').map(Number);
     
     let minutes = (eH * 60 + eM) - (sH * 60 + sM);
-    const hasLunch = dayIndex !== 4; // Viernes no tiene comida
+    const hasLunch = dayIndex !== 4;
     if (hasLunch && minutes > 30) minutes -= 30;
     return Math.max(0, Math.round((minutes / 60) * 10) / 10);
 }
 
-// Calcular hora de salida desde horas trabajadas (añadiendo comida si toca)
+// FUNCIÓN CLAVE CORREGIDA - NUNCA ANTES DE 16:30
 function calculateExitTimeFromHours(startTime, hours, dayIndex) {
     if (!startTime || hours === null || hours <= 0) return null;
     const [sH, sM] = startTime.split(':').map(Number);
     const hasLunch = dayIndex !== 4;
+    
+    // Calcular minutos desde entrada
     let totalMinutes = (sH * 60 + sM) + (hours * 60);
     if (hasLunch) totalMinutes += 30;
     
-    // No hay mínimo de 16:30 para días normales
+    // APLICAR MÍNIMO 16:30 (990 minutos desde medianoche)
+    const MIN_EXIT_MINUTES = 16 * 60 + 30; // 990
+    if (totalMinutes < MIN_EXIT_MINUTES) {
+        totalMinutes = MIN_EXIT_MINUTES;
+    }
+    
     const exitHour = Math.floor(totalMinutes / 60);
     const exitMin = totalMinutes % 60;
     return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
 }
 
-// Calcular horas para días pasados (reales)
+// Calcular horas mínimas para cumplir 16:30
+function getMinHoursForDay(dayIndex, startTime) {
+    const [sH, sM] = startTime.split(':').map(Number);
+    const MIN_EXIT_MINUTES = 16 * 60 + 30;
+    let workMinutes = MIN_EXIT_MINUTES - (sH * 60 + sM);
+    const hasLunch = dayIndex !== 4;
+    if (hasLunch && workMinutes > 30) workMinutes -= 30;
+    return Math.max(0, Math.round((workMinutes / 60) * 10) / 10);
+}
+
 function calculatePastHours() {
     const currentDayIdx = getCurrentDayIndex();
     let total = 0;
@@ -91,9 +106,9 @@ function calculatePastHours() {
             total += getFixedTeleworkHours(i);
         } else if (exitTime) {
             const hours = calculateWorkedHours(startTime, exitTime, i);
-            total += (hours !== null) ? hours : 8;
+            total += (hours !== null) ? hours : getMinHoursForDay(i, startTime);
         } else if (i < currentDayIdx) {
-            total += 8;
+            total += getMinHoursForDay(i, startTime);
         } else if (i === currentDayIdx) {
             total += calculateTodayWorkedHours();
         }
@@ -101,7 +116,6 @@ function calculatePastHours() {
     return Math.round(total * 10) / 10;
 }
 
-// Calcular horas para días FUTUROS (solo los que NO son manuales)
 function calculateFutureHours() {
     const result = {};
     const currentDayIdx = getCurrentDayIndex();
@@ -148,40 +162,42 @@ function calculateFutureHours() {
                 assigned = remainingHours - totalAssigned;
                 assigned = Math.round(assigned * 10) / 10;
             }
+            // Asegurar que no sea menos del mínimo
+            const minHours = getMinHoursForDay(day.index, currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime);
+            if (assigned < minHours) assigned = minHours;
             result[day.id] = assigned;
             totalAssigned += assigned;
         }
     } else if (flexibleDays.length > 0) {
         for (const day of flexibleDays) {
-            result[day.id] = 8;
+            const startTime = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
+            result[day.id] = getMinHoursForDay(day.index, startTime);
         }
     }
     return result;
 }
 
-// Obtener horas que debe trabajar un día
 function getDayRequiredHours(dayId, dayIndex) {
     const dayConfig = currentSettings[dayId];
     const currentDayIdx = getCurrentDayIndex();
+    const startTime = dayConfig?.customStartTime || currentSettings.globalStartTime;
     
     if (dayConfig?.isVacation) return 8;
     if (dayConfig?.isTelework) return getFixedTeleworkHours(dayIndex);
     
     if (dayIndex <= currentDayIdx || dayConfig?.isManualExit) {
         if (dayConfig?.customExitTime) {
-            const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
             const hours = calculateWorkedHours(startTime, dayConfig.customExitTime, dayIndex);
             if (hours !== null) return hours;
         }
         if (dayIndex === currentDayIdx) return calculateTodayWorkedHours();
-        return 8;
+        return getMinHoursForDay(dayIndex, startTime);
     }
     
     const futureHours = calculateFutureHours();
-    return futureHours[dayId] || 8;
+    return futureHours[dayId] || getMinHoursForDay(dayIndex, startTime);
 }
 
-// Obtener hora de salida calculada
 function getCalculatedExitTime(dayId, dayIndex) {
     const dayConfig = currentSettings[dayId];
     const startTime = dayConfig?.customStartTime || currentSettings.globalStartTime;
@@ -192,7 +208,6 @@ function getCalculatedExitTime(dayId, dayIndex) {
     return calculateExitTimeFromHours(startTime, hours, dayIndex) || '--:--';
 }
 
-// Horas REALES trabajadas hoy (hasta ahora)
 function calculateTodayWorkedHours() {
     const userData = getUserData();
     if (!userData) return 0;
@@ -227,7 +242,7 @@ function calculateTodayWorkedHours() {
     let workedMinutes = (endHour - startHour) * 60 + (endMin - startMin);
     const hasLunch = dayIndex !== 4;
     if (hasLunch && workedMinutes > 30) workedMinutes -= 30;
-    return Math.max(0, workedMinutes / 60);
+    return Math.max(0, Math.min(workedMinutes / 60, 12));
 }
 
 function renderTable() {
@@ -284,7 +299,6 @@ function renderTable() {
         tbody.appendChild(row);
     }
     
-    // Event listeners
     document.querySelectorAll('.startTimeInput').forEach(input => {
         input.removeEventListener('change', handleStartTimeChange);
         input.addEventListener('change', handleStartTimeChange);
