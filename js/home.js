@@ -51,7 +51,38 @@ function calculateAccumulatedWeekHours() {
     accumulated += calculateTodayHoursReal();
     return Math.round(accumulated * 10) / 10;
 }
-
+function calculateTodayWorkedMinutes() {
+    const userData = getUserData();
+    if (!userData) return 0;
+    const settings = userData.workSettings || {};
+    const now = new Date();
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const today = dayNames[now.getDay() - 1];
+    if (!today || now.getDay() === 6 || now.getDay() === 0) return 0;
+    
+    const dayIndex = dayNames.indexOf(today);
+    const config = settings[today] || {};
+    const startTime = config.customStartTime || settings.globalStartTime || '08:30';
+    const exitTime = config.customExitTime;
+    
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    if (nowMinutes < startMinutes) return 0;
+    
+    let endMinutes = nowMinutes;
+    if (exitTime) {
+        const [eH, eM] = exitTime.split(':').map(Number);
+        const exitMinutes = eH * 60 + eM;
+        if (nowMinutes > exitMinutes) endMinutes = exitMinutes;
+    }
+    
+    let worked = endMinutes - startMinutes;
+    const hasLunch = dayIndex !== 4;
+    if (hasLunch && worked > 30) worked -= 30;
+    return Math.max(0, worked);
+}
 function calculateExitTimeForHome() {
     const userData = getUserData();
     if (!userData) return '--:--';
@@ -59,49 +90,66 @@ function calculateExitTimeForHome() {
     const now = new Date();
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const today = dayNames[now.getDay() - 1];
+    
     if (!today || now.getDay() === 6 || now.getDay() === 0) return 'Fin de semana';
     
     const dayIndex = dayNames.indexOf(today);
-    const dayConfig = settings[today] || {};
-    const startTime = dayConfig.customStartTime || settings.globalStartTime || '08:30';
+    const config = settings[today] || {};
+    const startTime = config.customStartTime || settings.globalStartTime || '08:30';
     
-    if (dayConfig.isVacation) return 'Vacaciones';
-    if (dayConfig.isTelework) return 'Teletrabajo';
-    if (dayConfig.customExitTime) return dayConfig.customExitTime;
+    if (config.isVacation) return 'Vacaciones';
+    if (config.isTelework) return 'Teletrabajo';
+    if (config.customExitTime) return config.customExitTime;
     
-    // Calcular minutos restantes para llegar a 40h
+    // Calcular minutos REALES trabajados esta semana (como hace la calculadora)
     let realMinutes = 0;
+    
+    // Días anteriores completos
     for (let i = 0; i < now.getDay() - 1; i++) {
         const dayId = dayNames[i];
-        const cfg = settings[dayId] || {};
-        const start = cfg.customStartTime || settings.globalStartTime || '08:30';
-        const exit = cfg.customExitTime;
+        const dayConfig = settings[dayId] || {};
+        const start = dayConfig.customStartTime || settings.globalStartTime || '08:30';
         
-        if (cfg.isVacation) realMinutes += 8 * 60;
-        else if (cfg.isTelework) realMinutes += (i === 4 ? 8 : 9) * 60;
-        else if (exit) {
+        if (dayConfig.isVacation) {
+            realMinutes += 8 * 60;
+        } else if (dayConfig.isTelework) {
+            realMinutes += (i === 4 ? 8 : 9) * 60;
+        } else if (dayConfig.customExitTime) {
+            // Calcular minutos trabajados ese día
             const [sH, sM] = start.split(':').map(Number);
-            const [eH, eM] = exit.split(':').map(Number);
+            const [eH, eM] = dayConfig.customExitTime.split(':').map(Number);
             let worked = (eH * 60 + eM) - (sH * 60 + sM);
-            if (i !== 4 && worked > 30) worked -= 30;
+            const hasLunch = i !== 4;
+            if (hasLunch && worked > 30) worked -= 30;
             realMinutes += Math.max(0, worked);
-        } else realMinutes += 8 * 60;
+        } else {
+            realMinutes += 8 * 60;
+        }
     }
     
+    // Añadir minutos trabajados HOY hasta ahora
     const todayWorked = window.calculateTodayWorkedMinutes ? window.calculateTodayWorkedMinutes() : 0;
     realMinutes += todayWorked;
     
-    const remainingMinutes = Math.max(0, 40 * 60 - realMinutes);
-    const [sH, sM] = startTime.split(':').map(Number);
-    let totalMinutes = sH * 60 + sM + remainingMinutes;
+    // Minutos que faltan para llegar a 40h (2400 minutos)
+    let remainingMinutes = 2400 - realMinutes;
+    if (remainingMinutes < 0) remainingMinutes = 0;
+    
+    // Calcular hora de salida: entrada + minutos restantes + comida (si no es viernes)
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    let totalMinutes = startHour * 60 + startMin + remainingMinutes;
+    
     const hasLunch = dayIndex !== 4;
     if (hasLunch) totalMinutes += 30;
+    
+    // Aplicar mínimo 16:30
+    const MIN_EXIT = 16 * 60 + 30;
+    if (totalMinutes < MIN_EXIT) totalMinutes = MIN_EXIT;
     
     const exitHour = Math.floor(totalMinutes / 60);
     const exitMin = totalMinutes % 60;
     return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
 }
-
 function updateHomeStats() {
     const userData = getUserData();
     if (!userData) return;

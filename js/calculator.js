@@ -117,7 +117,8 @@ function calculateFutureMinutes() {
     const pastMinutes = calculateRealPastMinutes();
     let remainingMinutes = 40 * 60 - pastMinutes;
     
-    // Primero restar días fijos
+    // Primero identificar días flexibles
+    const flexibleDays = [];
     for (let i = currentDayIdx + 1; i < days.length; i++) {
         const day = days[i];
         const config = currentSettings[day.id] || {};
@@ -135,21 +136,65 @@ function calculateFutureMinutes() {
             if (minutes !== null) {
                 remainingMinutes -= minutes;
                 result[day.id] = minutes;
+            } else {
+                flexibleDays.push(day);
             }
-        }
-    }
-    
-    // Días flexibles restantes
-    const flexibleDays = [];
-    for (let i = currentDayIdx + 1; i < days.length; i++) {
-        const day = days[i];
-        const config = currentSettings[day.id] || {};
-        if (!config.isVacation && !config.isTelework && !(config.isManualExit && config.customExitTime)) {
+        } else {
             flexibleDays.push(day);
         }
     }
     
-    if (flexibleDays.length > 0 && remainingMinutes > 0) {
+    if (flexibleDays.length === 0 || remainingMinutes <= 0) {
+        return result;
+    }
+    
+    // Buscar una hora de salida común para todos los días flexibles
+    // Probamos desde 16:30 hasta 18:00
+    let bestExitTime = null;
+    let bestDiff = Infinity;
+    let bestMinutes = [];
+    
+    for (let exitMinute = 16 * 60 + 30; exitMinute <= 18 * 60; exitMinute++) {
+        const testExit = minutesToTime(exitMinute);
+        let totalTest = 0;
+        let valid = true;
+        const dayMinutes = [];
+        
+        for (const day of flexibleDays) {
+            const start = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
+            const worked = calculateWorkedMinutes(start, testExit, day.index);
+            if (worked === null || worked < 0) {
+                valid = false;
+                break;
+            }
+            dayMinutes.push(worked);
+            totalTest += worked;
+        }
+        
+        if (valid) {
+            const diff = Math.abs(totalTest - remainingMinutes);
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                bestExitTime = testExit;
+                bestMinutes = dayMinutes;
+            }
+        }
+    }
+    
+    if (bestExitTime) {
+        // Ajustar la diferencia en el último día
+        let totalAssigned = bestMinutes.reduce((a, b) => a + b, 0);
+        const diff = remainingMinutes - totalAssigned;
+        
+        for (let i = 0; i < flexibleDays.length; i++) {
+            let assigned = bestMinutes[i];
+            if (i === flexibleDays.length - 1 && Math.abs(diff) > 0) {
+                assigned += diff;
+            }
+            result[flexibleDays[i].id] = Math.round(assigned);
+        }
+    } else {
+        // Fallback: reparto equitativo
         const minutesPerDay = remainingMinutes / flexibleDays.length;
         let totalAssigned = 0;
         for (let i = 0; i < flexibleDays.length; i++) {
@@ -160,11 +205,6 @@ function calculateFutureMinutes() {
             }
             result[day.id] = Math.round(assigned);
             totalAssigned += assigned;
-        }
-    } else if (flexibleDays.length > 0) {
-        for (const day of flexibleDays) {
-            const start = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
-            result[day.id] = 8 * 60;
         }
     }
     
