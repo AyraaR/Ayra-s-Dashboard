@@ -120,14 +120,14 @@ function calculatePastMinutes() {
     return total;
 }
 
-// NUEVA FUNCIÓN: calcular minutos para días futuros buscando MISMA hora de salida
+// NUEVA FUNCIÓN: calcular minutos para días futuros con MISMA hora de salida
 function calculateFutureMinutesSameExit() {
     const result = {};
     const currentDayIdx = getCurrentDayIndex();
     const pastMinutes = calculatePastMinutes();
     let remainingMinutes = 40 * 60 - pastMinutes;
     
-    // Identificar días flexibles futuros (sin teletrabajo, vacaciones, ni manuales)
+    // Identificar días flexibles futuros
     const flexibleDays = [];
     for (let i = currentDayIdx + 1; i < days.length; i++) {
         const day = days[i];
@@ -158,44 +158,52 @@ function calculateFutureMinutesSameExit() {
         return result;
     }
     
-    // Buscar una hora de salida común que funcione para todos los días flexibles
-    // Probamos diferentes horas de salida (de 16:30 a 19:00)
+    // Buscar una hora de salida que haga que todos los días flexibles cumplan exactamente las horas restantes
+    // Probamos cada minuto entre 16:30 y 19:00
     let bestExitTime = null;
-    let bestError = Infinity;
+    let bestTotalMinutes = 0;
+    let bestDifference = Infinity;
     
-    for (let exitHour = 16; exitHour <= 19; exitHour++) {
-        for (let exitMin = 0; exitMin < 60; exitMin += 5) {
-            if (exitHour === 16 && exitMin < 30) continue;
-            
-            const testExitTime = `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
-            let totalTestMinutes = 0;
-            let valid = true;
-            
-            for (const day of flexibleDays) {
-                const startTime = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
-                const workedMinutes = calculateWorkedMinutes(startTime, testExitTime, day.index);
-                if (workedMinutes === null || workedMinutes < getMinMinutesForDay(day.index, startTime)) {
-                    valid = false;
-                    break;
-                }
-                totalTestMinutes += workedMinutes;
+    for (let minutes = 16 * 60 + 30; minutes <= 19 * 60; minutes++) {
+        const testExitTime = minutesToTime(minutes);
+        let totalTestMinutes = 0;
+        let valid = true;
+        
+        for (const day of flexibleDays) {
+            const startTime = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
+            const workedMinutes = calculateWorkedMinutes(startTime, testExitTime, day.index);
+            if (workedMinutes === null || workedMinutes < getMinMinutesForDay(day.index, startTime)) {
+                valid = false;
+                break;
             }
-            
-            if (valid) {
-                const error = Math.abs(totalTestMinutes - remainingMinutes);
-                if (error < bestError) {
-                    bestError = error;
-                    bestExitTime = testExitTime;
-                }
+            totalTestMinutes += workedMinutes;
+        }
+        
+        if (valid) {
+            const difference = Math.abs(totalTestMinutes - remainingMinutes);
+            if (difference < bestDifference) {
+                bestDifference = difference;
+                bestExitTime = testExitTime;
+                bestTotalMinutes = totalTestMinutes;
             }
         }
     }
     
-    // Si encontramos una hora común, usarla
-    if (bestExitTime && bestError < 60) { // Menos de 1 hora de error
-        for (const day of flexibleDays) {
+    // Si encontramos una hora, usarla
+    if (bestExitTime) {
+        // Ajustar la diferencia distribuyéndola entre los días
+        const diff = remainingMinutes - bestTotalMinutes;
+        for (let i = 0; i < flexibleDays.length; i++) {
+            const day = flexibleDays[i];
             const startTime = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
-            result[day.id] = calculateWorkedMinutes(startTime, bestExitTime, day.index);
+            let workedMinutes = calculateWorkedMinutes(startTime, bestExitTime, day.index);
+            if (i === 0 && Math.abs(diff) > 0) {
+                workedMinutes += diff;
+                if (workedMinutes < getMinMinutesForDay(day.index, startTime)) {
+                    workedMinutes = getMinMinutesForDay(day.index, startTime);
+                }
+            }
+            result[day.id] = Math.max(0, Math.round(workedMinutes));
         }
         return result;
     }

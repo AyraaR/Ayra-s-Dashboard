@@ -85,56 +85,99 @@ function updateHomeStats() {
     const userData = getUserData();
     if (!userData) return;
     
-    const actualAccumulated = calculateAccumulatedWeekHours();
-    const percent = Math.min(100, (actualAccumulated / 40) * 100);
-    const todayHours = calculateTodayHoursReal();
-    const exitTime = calculateExitTimeForHome();
+    // Calcular horas REALES acumuladas (basado en salidas reales, no en planificadas)
+    let realAccumulatedMinutes = 0;
+    const now = new Date();
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const settings = userData.workSettings || {};
+    
+    for (let i = 0; i < now.getDay() - 1; i++) {
+        const dayId = dayNames[i];
+        const dayConfig = settings[dayId] || {};
+        const startTime = dayConfig.customStartTime || settings.globalStartTime || '08:30';
+        const exitTime = dayConfig.customExitTime;
+        
+        if (dayConfig.isVacation) {
+            realAccumulatedMinutes += 8 * 60;
+        } else if (dayConfig.isTelework) {
+            realAccumulatedMinutes += (i === 4 ? 8 : 9) * 60;
+        } else if (exitTime) {
+            const [sH, sM] = startTime.split(':').map(Number);
+            const [eH, eM] = exitTime.split(':').map(Number);
+            let worked = (eH * 60 + eM) - (sH * 60 + sM);
+            const hasLunch = i !== 4;
+            if (hasLunch && worked > 30) worked -= 30;
+            realAccumulatedMinutes += Math.max(0, worked);
+        } else {
+            realAccumulatedMinutes += 8 * 60;
+        }
+    }
+    
+    // Añadir horas de hoy (reales hasta ahora)
+    if (window.calculateTodayWorkedMinutes) {
+        realAccumulatedMinutes += window.calculateTodayWorkedMinutes();
+    }
+    
+    const realAccumulatedHours = realAccumulatedMinutes / 60;
+    const percent = Math.min(100, (realAccumulatedHours / 40) * 100);
+    const todayHours = (window.calculateTodayWorkedMinutes ? window.calculateTodayWorkedMinutes() : 0) / 60;
+    
+    // Calcular hora de salida para hoy
+    const today = dayNames[now.getDay() - 1];
+    let exitTimeDisplay = '--:--';
+    if (today && settings[today]) {
+        const dayConfig = settings[today];
+        const startTime = dayConfig.customStartTime || settings.globalStartTime || '08:30';
+        if (dayConfig.isVacation) {
+            exitTimeDisplay = 'Vacaciones';
+        } else if (dayConfig.isTelework) {
+            exitTimeDisplay = 'Teletrabajo';
+        } else if (dayConfig.customExitTime) {
+            exitTimeDisplay = dayConfig.customExitTime;
+        } else {
+            // Calcular salida según horas restantes
+            const remainingMinutes = 40 * 60 - realAccumulatedMinutes;
+            const [sH, sM] = startTime.split(':').map(Number);
+            let totalMinutes = sH * 60 + sM + remainingMinutes;
+            const hasLunch = dayNames.indexOf(today) !== 4;
+            if (hasLunch) totalMinutes += 30;
+            exitTimeDisplay = minutesToTimeDisplay(totalMinutes);
+        }
+    }
     
     const weeklyHoursSpan = document.getElementById('weeklyHours');
     const todayHoursSpan = document.getElementById('todayHours');
     const progressFill = document.getElementById('weeklyProgress');
     const exitTimeSpan = document.getElementById('exitTimeToday');
-    
-    if (weeklyHoursSpan) weeklyHoursSpan.innerText = actualAccumulated.toFixed(1);
-    if (todayHoursSpan) todayHoursSpan.innerText = todayHours.toFixed(1);
-    if (progressFill) progressFill.style.width = percent + '%';
-    if (exitTimeSpan) exitTimeSpan.innerText = exitTime;
-    
+    const statsProductivity = document.getElementById('statsProductivity');
     const statsBooks = document.getElementById('statsBooks');
     const statsWatched = document.getElementById('statsWatched');
     const statsWorkouts = document.getElementById('statsWorkouts');
     
+    if (weeklyHoursSpan) weeklyHoursSpan.innerText = realAccumulatedHours.toFixed(1);
+    if (todayHoursSpan) todayHoursSpan.innerText = todayHours.toFixed(1);
+    if (progressFill) progressFill.style.width = percent + '%';
+    if (exitTimeSpan) exitTimeSpan.innerText = exitTimeDisplay;
     if (statsBooks) statsBooks.innerText = (userData.books || []).length;
     if (statsWatched) statsWatched.innerText = (userData.series?.watched || []).length;
     if (statsWorkouts) statsWorkouts.innerText = (userData.workouts || []).length;
     
-    // PRODUCTIVIDAD: solo cuenta si NO es día de descanso planificado
-    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const today = dayNames[new Date().getDay() - 1];
-    let expectedToday = 8;
-    let isRestDay = false;
-    
-    if (today && userData.workSettings?.[today]) {
-        const dayConfig = userData.workSettings[today];
-        const dayIndex = dayNames.indexOf(today);
-        if (dayConfig?.isVacation) {
-            expectedToday = 8;
-            isRestDay = true; // Vacaciones = día de descanso
-        } else if (dayConfig?.isTelework) {
-            expectedToday = dayIndex === 4 ? 8 : 9;
-        } else if (dayConfig?.customHours) {
-            expectedToday = dayConfig.customHours;
-        }
-    }
-    
-    // Si es fin de semana o vacaciones, productividad = 100% (no se penaliza)
+    // Productividad (solo si no es fin de semana ni vacaciones)
     let productivity = 100;
-    if (!isRestDay && new Date().getDay() !== 0 && new Date().getDay() !== 6) {
-        productivity = expectedToday > 0 ? Math.min(100, (todayHours / expectedToday) * 100) : 0;
+    if (today && settings[today] && !settings[today].isVacation && now.getDay() !== 0 && now.getDay() !== 6) {
+        const dayConfig = settings[today];
+        let expectedTodayHours = 8;
+        if (dayConfig.isTelework) expectedTodayHours = dayNames.indexOf(today) === 4 ? 8 : 9;
+        else if (dayConfig.customHours) expectedTodayHours = dayConfig.customHours;
+        productivity = expectedTodayHours > 0 ? Math.min(100, (todayHours / expectedTodayHours) * 100) : 0;
     }
-    
-    const statsProductivity = document.getElementById('statsProductivity');
     if (statsProductivity) statsProductivity.innerText = Math.floor(productivity);
+}
+
+function minutesToTimeDisplay(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
 
 async function updatePreviews() {
