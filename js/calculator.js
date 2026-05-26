@@ -21,7 +21,7 @@ function loadSettings() {
                 customHours: null, 
                 customStartTime: null,
                 customExitTime: null,
-                isManualExit: false  // NUEVO: indica si el usuario puso la hora manualmente
+                isManualExit: false
             }; 
         });
     }
@@ -87,7 +87,6 @@ function getMinHoursForDay(dayIndex, startTime) {
     return Math.max(0, Math.round((workMinutes / 60) * 10) / 10);
 }
 
-// Calcular horas REALES para días pasados (usando lo que hay, manual o automático)
 function calculatePastHours() {
     const currentDayIdx = getCurrentDayIndex();
     let total = 0;
@@ -111,11 +110,9 @@ function calculatePastHours() {
             total += calculateTodayHoursReal();
         }
     }
-    
     return total;
 }
 
-// Calcular horas para días FUTUROS (solo los que NO son manuales)
 function calculateFutureHours() {
     const result = {};
     const currentDayIdx = getCurrentDayIndex();
@@ -135,7 +132,6 @@ function calculateFutureHours() {
             totalFixed += hours;
             result[day.id] = hours;
         } else if (dayConfig.isManualExit && dayConfig.customExitTime) {
-            // Día con salida MANUAL del usuario - se respeta
             const hours = calculateHoursFromTimes(startTime, dayConfig.customExitTime, i);
             if (hours !== null) {
                 totalFixed += hours;
@@ -144,7 +140,6 @@ function calculateFutureHours() {
                 flexibleDays.push(day);
             }
         } else {
-            // Día flexible (sin salida manual)
             flexibleDays.push(day);
         }
     }
@@ -176,7 +171,6 @@ function calculateFutureHours() {
             result[day.id] = getMinHoursForDay(day.index, startTime);
         }
     }
-    
     return result;
 }
 
@@ -189,33 +183,26 @@ function getDayHours(dayId, dayIndex) {
     if (dayConfig?.isTelework) return getFixedTeleworkHours(dayIndex);
     if (dayConfig?.customHours) return dayConfig.customHours;
     
-    // Días pasados o con salida manual
     if (dayIndex <= currentDayIdx || dayConfig?.isManualExit) {
         if (dayConfig?.customExitTime) {
             const hours = calculateHoursFromTimes(startTime, dayConfig.customExitTime, dayIndex);
             if (hours !== null) return hours;
         }
-        if (dayIndex === currentDayIdx) {
-            return calculateTodayHoursReal();
-        }
+        if (dayIndex === currentDayIdx) return calculateTodayHoursReal();
         return getMinHoursForDay(dayIndex, startTime);
     }
     
-    // Días futuros flexibles
     const futureHours = calculateFutureHours();
     return futureHours[dayId] || getMinHoursForDay(dayIndex, startTime);
 }
 
-function getDayExitTime(dayId, dayIndex) {
+function getCalculatedExitTime(dayId, dayIndex) {
     const dayConfig = currentSettings[dayId];
     const startTime = dayConfig?.customStartTime || currentSettings.globalStartTime;
-    const customExit = dayConfig?.customExitTime;
     const hours = getDayHours(dayId, dayIndex);
     
     if (dayConfig?.isVacation) return 'Vacaciones';
     if (dayConfig?.isTelework) return 'Teletrabajo';
-    if (customExit) return customExit;
-    
     return calculateExitTimeFromHours(startTime, hours, dayIndex) || '--:--';
 }
 
@@ -253,7 +240,6 @@ function calculateTodayHoursReal() {
     let workedMinutes = (endHour - startHour) * 60 + (endMin - startMin);
     const hasLunch = dayIndex !== 4;
     if (hasLunch && workedMinutes > 30) workedMinutes -= 30;
-    
     return Math.max(0, Math.min(workedMinutes / 60, 12));
 }
 
@@ -262,8 +248,8 @@ function renderTable() {
     if (!tbody) return;
     
     const currentDayIdx = getCurrentDayIndex();
-    
     tbody.innerHTML = '';
+    
     for (let i = 0; i < days.length; i++) {
         const day = days[i];
         const dayConfig = currentSettings[day.id] || {};
@@ -274,10 +260,9 @@ function renderTable() {
         const isToday = day.index === currentDayIdx;
         
         const hours = getDayHours(day.id, day.index);
-        const exitTime = getDayExitTime(day.id, day.index);
-        
+        const calculatedExit = getCalculatedExitTime(day.id, day.index);
+        const manualExit = dayConfig.customExitTime || '';
         const isManual = dayConfig.isManualExit || false;
-        const exitDisplayValue = (isManual && exitTime !== '--:--' && exitTime !== 'Vacaciones' && exitTime !== 'Teletrabajo') ? exitTime : '';
         
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid var(--glass-border)';
@@ -286,7 +271,6 @@ function renderTable() {
                 <strong>${day.name}</strong>
                 ${isPastDay ? '<br><small style="color: var(--text-secondary);">✅ pasado</small>' : ''}
                 ${isToday ? '<br><small style="color: var(--accent);">📅 hoy</small>' : ''}
-                ${!isPastDay && !isToday && !isTelework && !isVacation && !isManual ? '<br><small style="color: var(--accent);">📌 flexible</small>' : ''}
                 ${isManual ? '<br><small style="color: var(--success);">✏️ manual</small>' : ''}
                 ${isVacation ? '<br><small style="color: var(--warning);">🌴 vacaciones</small>' : ''}
                 ${isTelework ? '<br><small style="color: var(--success);">🏠 teletrabajo</small>' : ''}
@@ -295,21 +279,24 @@ function renderTable() {
                 ${!isTelework && !isVacation ? 
                     `<input type="time" class="startTimeInput" data-day="${day.id}" value="${startTime}" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 20px; padding: 6px 10px; color: white; width: 110px;">` : 
                     '<span style="color: var(--text-secondary);">---</span>'}
-               </td>
+                </td>
             <td style="padding: 12px; text-align: center;">
                 ${!isTelework && !isVacation ? 
-                    `<input type="time" class="exitTimeInput" data-day="${day.id}" value="${exitDisplayValue}" placeholder="auto" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 20px; padding: 6px 10px; color: white; width: 110px;">` : 
+                    `<input type="time" class="exitTimeInput" data-day="${day.id}" value="${manualExit}" placeholder="─" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 20px; padding: 6px 10px; color: white; width: 110px;">` : 
                     '<span style="color: var(--text-secondary);">---</span>'}
-               </td>
+                </td>
+            <td style="padding: 12px; text-align: center;">
+                <strong style="color: var(--info);">${calculatedExit}</strong>
+                </td>
             <td style="padding: 12px; text-align: center;">
                 <input type="checkbox" class="teleworkCheck" data-day="${day.id}" ${isTelework ? 'checked' : ''} ${isVacation ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);">
-               </td>
+                </td>
             <td style="padding: 12px; text-align: center;">
                 <input type="checkbox" class="vacationCheck" data-day="${day.id}" ${isVacation ? 'checked' : ''} ${isTelework ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);">
-               </td>
+                </td>
             <td style="padding: 12px; text-align: center;">
                 <strong style="color: var(--accent);">${hours.toFixed(1)}h</strong>
-               </td>
+                </td>
         `;
         tbody.appendChild(row);
     }
@@ -357,13 +344,12 @@ function handleExitTimeChange(e) {
             return;
         }
         currentSettings[day].customExitTime = exitTime;
-        currentSettings[day].isManualExit = true;  // Marcar como manual
-        delete currentSettings[day].customHours;
-        showToast(`⏰ Salida MANUAL para ${days.find(d => d.id === day).name}: ${exitTime}`);
+        currentSettings[day].isManualExit = true;
+        showToast(`📝 Salida manual para ${days.find(d => d.id === day).name}: ${exitTime}`);
     } else {
         delete currentSettings[day].customExitTime;
-        delete currentSettings[day].isManualExit;  // Quitar marca manual
-        showToast(`🔄 Salida AUTOMÁTICA restaurada para ${days.find(d => d.id === day).name}`);
+        delete currentSettings[day].isManualExit;
+        showToast(`🔄 Salida automática para ${days.find(d => d.id === day).name}`);
     }
     renderTable();
     updateSummary();
@@ -375,7 +361,6 @@ function handleTeleworkChange(e) {
     currentSettings[day].isTelework = e.target.checked;
     if (e.target.checked) {
         currentSettings[day].isVacation = false;
-        currentSettings[day].customHours = null;
         delete currentSettings[day].customExitTime;
         delete currentSettings[day].isManualExit;
         const vacationCheck = document.querySelector(`.vacationCheck[data-day="${day}"]`);
@@ -391,7 +376,6 @@ function handleVacationChange(e) {
     currentSettings[day].isVacation = e.target.checked;
     if (e.target.checked) {
         currentSettings[day].isTelework = false;
-        currentSettings[day].customHours = null;
         delete currentSettings[day].customExitTime;
         delete currentSettings[day].isManualExit;
         const teleworkCheck = document.querySelector(`.teleworkCheck[data-day="${day}"]`);
@@ -411,20 +395,14 @@ function calculateTotalAccumulated() {
         const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
         const exitTime = dayConfig.customExitTime;
         
-        if (dayConfig.isVacation) {
-            total += 8;
-        } else if (dayConfig.isTelework) {
-            total += getFixedTeleworkHours(i);
-        } else if (exitTime) {
+        if (dayConfig.isVacation) total += 8;
+        else if (dayConfig.isTelework) total += getFixedTeleworkHours(i);
+        else if (exitTime) {
             const hours = calculateHoursFromTimes(startTime, exitTime, i);
             total += (hours !== null) ? hours : getMinHoursForDay(i, startTime);
-        } else if (i < currentDayIdx) {
-            total += getMinHoursForDay(i, startTime);
-        } else if (i === currentDayIdx) {
-            total += calculateTodayHoursReal();
-        }
+        } else if (i < currentDayIdx) total += getMinHoursForDay(i, startTime);
+        else if (i === currentDayIdx) total += calculateTodayHoursReal();
     }
-    
     return Math.round(total * 10) / 10;
 }
 
@@ -443,13 +421,8 @@ function updateSummary() {
     if (progressFill) progressFill.style.width = percent + '%';
     
     if (msgSpan) {
-        if (total >= 40) {
-            msgSpan.innerHTML = '✅ ¡Has cumplido las 40 horas semanales! 🎉';
-            msgSpan.style.color = 'var(--success)';
-        } else {
-            msgSpan.innerHTML = `📊 Llevas ${total.toFixed(1)}h. Te quedan ${remaining.toFixed(1)}h para llegar a 40.`;
-            msgSpan.style.color = 'var(--accent)';
-        }
+        if (total >= 40) msgSpan.innerHTML = '✅ ¡Has cumplido las 40 horas semanales! 🎉';
+        else msgSpan.innerHTML = `📊 Llevas ${total.toFixed(1)}h. Te quedan ${remaining.toFixed(1)}h para llegar a 40.`;
     }
     
     if (window.updateStatsFromCalculator) window.updateStatsFromCalculator(total, remaining, percent);
@@ -465,11 +438,10 @@ function applyGlobalTime() {
     });
     renderTable();
     updateSummary();
-    showToast('⏰ Hora global aplicada a días no manuales');
+    showToast('⏰ Hora global aplicada');
 }
 
 function recalculateAll() {
-    // Solo limpiar días FUTUROS que NO son manuales
     const currentDayIdx = getCurrentDayIndex();
     days.forEach(day => {
         if (currentSettings[day.id] && day.index > currentDayIdx && !currentSettings[day.id].isManualExit) {
@@ -478,12 +450,12 @@ function recalculateAll() {
     });
     renderTable();
     updateSummary();
-    showToast('🔄 Horas futuras automáticas recalculadas');
+    showToast('🔄 Horas futuras recalculadas');
 }
 
 function saveAll() {
     saveSettings();
-    showToast('💾 Configuración guardada correctamente');
+    showToast('💾 Configuración guardada');
 }
 
 function initDockActive() {
