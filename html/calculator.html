@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Jarvis - Calculadora Laboral</title>
     <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
     <link rel="stylesheet" href="../css/styles.css">
@@ -17,16 +17,11 @@
     <main class="calculator-container">
         <div class="glass-card">
             <h2><i class="fas fa-calendar-week"></i> Planificación Semanal</h2>
-            <p style="margin-bottom: 20px; color: var(--text-secondary);">Configura tu semana. Teletrabajo tiene horas fijas (L-J 9h, V 8h). Los días presenciales se ajustan automáticamente para cumplir 40h.</p>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                Configura tu semana. Puedes modificar tanto la hora de entrada como la de salida de cada día.
+                Si dejas la salida vacía, se calculará automáticamente para cumplir 40h semanales.
+            </p>
             
-            <div style="margin-bottom: 25px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px;">
-                <label style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                    <i class="fas fa-door-open"></i> 
-                    <input type="time" id="manualExitTime" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 40px; padding: 8px 15px; color: white;">
-                    <button id="setManualExitBtn" class="btn-secondary"><i class="fas fa-save"></i> Aplicar</button>
-                    <button id="clearManualExitBtn" class="btn-secondary"><i class="fas fa-times"></i> Limpiar</button>
-                </label>
-            </div>
             <div style="margin-bottom: 25px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px;">
                 <label style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                     <i class="fas fa-clock"></i> 
@@ -42,10 +37,10 @@
                         <tr style="border-bottom: 2px solid var(--accent);">
                             <th style="padding: 12px; text-align: left;">Día</th>
                             <th style="padding: 12px; text-align: center;">Entrada</th>
+                            <th style="padding: 12px; text-align: center;">Salida</th>
                             <th style="padding: 12px; text-align: center;">Teletrabajo</th>
                             <th style="padding: 12px; text-align: center;">Vacaciones</th>
                             <th style="padding: 12px; text-align: center;">Horas</th>
-                            <th style="padding: 12px; text-align: center;">Salida</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
@@ -60,20 +55,23 @@
                     <div class="progress-bar" style="margin: 15px 0;"><div id="weeklyProgress" class="progress-fill" style="width: 0%;"></div></div>
                     <p id="adjustmentMsg" style="font-size: 0.9rem;"></p>
                     <button id="saveAllBtn" class="btn-primary" style="margin-top: 15px;"><i class="fas fa-save"></i> Guardar configuración</button>
+                    <button id="recalculateBtn" class="btn-secondary" style="margin-top: 15px; margin-left: 10px;"><i class="fas fa-calculator"></i> Recalcular automático</button>
                 </div>
             </div>
         </div>
     </main>
 
     <div class="floating-dock">
-        <a href="home.html" class="dock-item"><i class="fas fa-home"></i><span>Inicio</span></a>
-        <a href="calculator.html" class="dock-item active"><i class="fas fa-calculator"></i><span>Horas</span></a>
-        <a href="shopping.html" class="dock-item"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
-        <a href="books.html" class="dock-item"><i class="fas fa-book"></i><span>Libros</span></a>
-        <a href="series.html" class="dock-item"><i class="fas fa-tv"></i><span>Series</span></a>
-        <a href="stats.html" class="dock-item"><i class="fas fa-chart-line"></i><span>Stats</span></a>
+        <a href="home.html" class="dock-item" data-page="home"><i class="fas fa-home"></i><span>Inicio</span></a>
+        <a href="calculator.html" class="dock-item active" data-page="calculator"><i class="fas fa-calculator"></i><span>Horas</span></a>
+        <a href="shopping.html" class="dock-item" data-page="shopping"><i class="fas fa-shopping-cart"></i><span>Compras</span></a>
+        <a href="books.html" class="dock-item" data-page="books"><i class="fas fa-book"></i><span>Libros</span></a>
+        <a href="series.html" class="dock-item" data-page="series"><i class="fas fa-tv"></i><span>Series</span></a>
         <a href="sports.html" class="dock-item" data-page="sports"><i class="fas fa-heartbeat"></i><span>Deporte</span></a>
         <a href="nutrition.html" class="dock-item" data-page="nutrition"><i class="fas fa-apple-alt"></i><span>Comida</span></a>
+        <a href="crafts.html" class="dock-item" data-page="crafts"><i class="fas fa-palette"></i><span>Arte</span></a>
+        <a href="tasks.html" class="dock-item" data-page="tasks"><i class="fas fa-check-circle"></i><span>Tareas</span></a>
+        <a href="stats.html" class="dock-item" data-page="stats"><i class="fas fa-chart-line"></i><span>Stats</span></a>
     </div>
 
     <script src="../js/auth.js"></script>
