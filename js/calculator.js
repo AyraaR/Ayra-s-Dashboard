@@ -18,7 +18,6 @@ function loadSettings() {
             currentSettings[day.id] = { 
                 isTelework: false, 
                 isVacation: false, 
-                customHours: null, 
                 customStartTime: null,
                 customExitTime: null,
                 isManualExit: false
@@ -49,20 +48,19 @@ function getCurrentDayIndex() {
     return day - 1;
 }
 
-function calculateHoursFromTimes(startTime, exitTime, dayIndex) {
+// Calcular horas trabajadas desde entrada hasta salida (restando comida)
+function calculateWorkedHours(startTime, exitTime, dayIndex) {
     if (!startTime || !exitTime) return null;
     const [sH, sM] = startTime.split(':').map(Number);
     const [eH, eM] = exitTime.split(':').map(Number);
     
-    const minExitMinutes = 16 * 60 + 30;
-    if (eH * 60 + eM < minExitMinutes) return null;
-    
     let minutes = (eH * 60 + eM) - (sH * 60 + sM);
-    const hasLunch = dayIndex !== 4;
-    if (hasLunch) minutes -= 30;
+    const hasLunch = dayIndex !== 4; // Viernes no tiene comida
+    if (hasLunch && minutes > 30) minutes -= 30;
     return Math.max(0, Math.round((minutes / 60) * 10) / 10);
 }
 
+// Calcular hora de salida desde horas trabajadas (añadiendo comida si toca)
 function calculateExitTimeFromHours(startTime, hours, dayIndex) {
     if (!startTime || hours === null || hours <= 0) return null;
     const [sH, sM] = startTime.split(':').map(Number);
@@ -70,23 +68,13 @@ function calculateExitTimeFromHours(startTime, hours, dayIndex) {
     let totalMinutes = (sH * 60 + sM) + (hours * 60);
     if (hasLunch) totalMinutes += 30;
     
-    const minExitMinutes = 16 * 60 + 30;
-    if (totalMinutes < minExitMinutes) totalMinutes = minExitMinutes;
-    
+    // No hay mínimo de 16:30 para días normales
     const exitHour = Math.floor(totalMinutes / 60);
     const exitMin = totalMinutes % 60;
     return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
 }
 
-function getMinHoursForDay(dayIndex, startTime) {
-    const [sH, sM] = startTime.split(':').map(Number);
-    const minExitMinutes = 16 * 60 + 30;
-    let workMinutes = minExitMinutes - (sH * 60 + sM);
-    const hasLunch = dayIndex !== 4;
-    if (hasLunch) workMinutes -= 30;
-    return Math.max(0, Math.round((workMinutes / 60) * 10) / 10);
-}
-
+// Calcular horas para días pasados (reales)
 function calculatePastHours() {
     const currentDayIdx = getCurrentDayIndex();
     let total = 0;
@@ -102,17 +90,18 @@ function calculatePastHours() {
         } else if (dayConfig.isTelework) {
             total += getFixedTeleworkHours(i);
         } else if (exitTime) {
-            const hours = calculateHoursFromTimes(startTime, exitTime, i);
-            total += (hours !== null) ? hours : getMinHoursForDay(i, startTime);
+            const hours = calculateWorkedHours(startTime, exitTime, i);
+            total += (hours !== null) ? hours : 8;
         } else if (i < currentDayIdx) {
-            total += getMinHoursForDay(i, startTime);
+            total += 8;
         } else if (i === currentDayIdx) {
-            total += calculateTodayHoursReal();
+            total += calculateTodayWorkedHours();
         }
     }
-    return total;
+    return Math.round(total * 10) / 10;
 }
 
+// Calcular horas para días FUTUROS (solo los que NO son manuales)
 function calculateFutureHours() {
     const result = {};
     const currentDayIdx = getCurrentDayIndex();
@@ -132,7 +121,7 @@ function calculateFutureHours() {
             totalFixed += hours;
             result[day.id] = hours;
         } else if (dayConfig.isManualExit && dayConfig.customExitTime) {
-            const hours = calculateHoursFromTimes(startTime, dayConfig.customExitTime, i);
+            const hours = calculateWorkedHours(startTime, dayConfig.customExitTime, i);
             if (hours !== null) {
                 totalFixed += hours;
                 result[day.id] = hours;
@@ -159,54 +148,52 @@ function calculateFutureHours() {
                 assigned = remainingHours - totalAssigned;
                 assigned = Math.round(assigned * 10) / 10;
             }
-            const startTime = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
-            const minHours = getMinHoursForDay(day.index, startTime);
-            if (assigned < minHours) assigned = minHours;
             result[day.id] = assigned;
             totalAssigned += assigned;
         }
     } else if (flexibleDays.length > 0) {
         for (const day of flexibleDays) {
-            const startTime = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
-            result[day.id] = getMinHoursForDay(day.index, startTime);
+            result[day.id] = 8;
         }
     }
     return result;
 }
 
-function getDayHours(dayId, dayIndex) {
+// Obtener horas que debe trabajar un día
+function getDayRequiredHours(dayId, dayIndex) {
     const dayConfig = currentSettings[dayId];
     const currentDayIdx = getCurrentDayIndex();
-    const startTime = dayConfig?.customStartTime || currentSettings.globalStartTime;
     
     if (dayConfig?.isVacation) return 8;
     if (dayConfig?.isTelework) return getFixedTeleworkHours(dayIndex);
-    if (dayConfig?.customHours) return dayConfig.customHours;
     
     if (dayIndex <= currentDayIdx || dayConfig?.isManualExit) {
         if (dayConfig?.customExitTime) {
-            const hours = calculateHoursFromTimes(startTime, dayConfig.customExitTime, dayIndex);
+            const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
+            const hours = calculateWorkedHours(startTime, dayConfig.customExitTime, dayIndex);
             if (hours !== null) return hours;
         }
-        if (dayIndex === currentDayIdx) return calculateTodayHoursReal();
-        return getMinHoursForDay(dayIndex, startTime);
+        if (dayIndex === currentDayIdx) return calculateTodayWorkedHours();
+        return 8;
     }
     
     const futureHours = calculateFutureHours();
-    return futureHours[dayId] || getMinHoursForDay(dayIndex, startTime);
+    return futureHours[dayId] || 8;
 }
 
+// Obtener hora de salida calculada
 function getCalculatedExitTime(dayId, dayIndex) {
     const dayConfig = currentSettings[dayId];
     const startTime = dayConfig?.customStartTime || currentSettings.globalStartTime;
-    const hours = getDayHours(dayId, dayIndex);
+    const hours = getDayRequiredHours(dayId, dayIndex);
     
     if (dayConfig?.isVacation) return 'Vacaciones';
     if (dayConfig?.isTelework) return 'Teletrabajo';
     return calculateExitTimeFromHours(startTime, hours, dayIndex) || '--:--';
 }
 
-function calculateTodayHoursReal() {
+// Horas REALES trabajadas hoy (hasta ahora)
+function calculateTodayWorkedHours() {
     const userData = getUserData();
     if (!userData) return 0;
     const settings = userData.workSettings || {};
@@ -240,7 +227,7 @@ function calculateTodayHoursReal() {
     let workedMinutes = (endHour - startHour) * 60 + (endMin - startMin);
     const hasLunch = dayIndex !== 4;
     if (hasLunch && workedMinutes > 30) workedMinutes -= 30;
-    return Math.max(0, Math.min(workedMinutes / 60, 12));
+    return Math.max(0, workedMinutes / 60);
 }
 
 function renderTable() {
@@ -259,7 +246,6 @@ function renderTable() {
         const isPastDay = day.index < currentDayIdx;
         const isToday = day.index === currentDayIdx;
         
-        const hours = getDayHours(day.id, day.index);
         const calculatedExit = getCalculatedExitTime(day.id, day.index);
         const manualExit = dayConfig.customExitTime || '';
         const isManual = dayConfig.isManualExit || false;
@@ -293,9 +279,6 @@ function renderTable() {
                 </td>
             <td style="padding: 12px; text-align: center;">
                 <input type="checkbox" class="vacationCheck" data-day="${day.id}" ${isVacation ? 'checked' : ''} ${isTelework ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);">
-                </td>
-            <td style="padding: 12px; text-align: center;">
-                <strong style="color: var(--accent);">${hours.toFixed(1)}h</strong>
                 </td>
         `;
         tbody.appendChild(row);
@@ -337,12 +320,6 @@ function handleExitTimeChange(e) {
     if (!currentSettings[day]) currentSettings[day] = {};
     
     if (exitTime) {
-        const [eH, eM] = exitTime.split(':').map(Number);
-        if (eH < 16 || (eH === 16 && eM < 30)) {
-            showToast(`❌ No puedes salir antes de las 16:30`, true);
-            renderTable();
-            return;
-        }
         currentSettings[day].customExitTime = exitTime;
         currentSettings[day].isManualExit = true;
         showToast(`📝 Salida manual para ${days.find(d => d.id === day).name}: ${exitTime}`);
@@ -385,29 +362,8 @@ function handleVacationChange(e) {
     updateSummary();
 }
 
-function calculateTotalAccumulated() {
-    const currentDayIdx = getCurrentDayIndex();
-    let total = 0;
-    
-    for (let i = 0; i <= currentDayIdx; i++) {
-        const day = days[i];
-        const dayConfig = currentSettings[day.id] || {};
-        const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
-        const exitTime = dayConfig.customExitTime;
-        
-        if (dayConfig.isVacation) total += 8;
-        else if (dayConfig.isTelework) total += getFixedTeleworkHours(i);
-        else if (exitTime) {
-            const hours = calculateHoursFromTimes(startTime, exitTime, i);
-            total += (hours !== null) ? hours : getMinHoursForDay(i, startTime);
-        } else if (i < currentDayIdx) total += getMinHoursForDay(i, startTime);
-        else if (i === currentDayIdx) total += calculateTodayHoursReal();
-    }
-    return Math.round(total * 10) / 10;
-}
-
 function updateSummary() {
-    const total = calculateTotalAccumulated();
+    const total = calculatePastHours();
     const remaining = Math.max(0, 40 - total);
     const percent = Math.min(100, (total / 40) * 100);
     
@@ -422,7 +378,7 @@ function updateSummary() {
     
     if (msgSpan) {
         if (total >= 40) msgSpan.innerHTML = '✅ ¡Has cumplido las 40 horas semanales! 🎉';
-        else msgSpan.innerHTML = `📊 Llevas ${total.toFixed(1)}h. Te quedan ${remaining.toFixed(1)}h para llegar a 40.`;
+        else msgSpan.innerHTML = `📊 Llevas ${total.toFixed(1)}h. Te quedan ${remaining.toFixed(1)}h.`;
     }
     
     if (window.updateStatsFromCalculator) window.updateStatsFromCalculator(total, remaining, percent);
@@ -481,5 +437,5 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
 });
 
-window.calculateTodayHoursReal = calculateTodayHoursReal;
+window.calculateTodayWorkedHours = calculateTodayWorkedHours;
 window.updateSummary = updateSummary;

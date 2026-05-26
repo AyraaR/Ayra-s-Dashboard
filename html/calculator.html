@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Jarvis - Calculadora Laboral</title>
     <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
     <link rel="stylesheet" href="../css/styles.css">
@@ -18,8 +18,8 @@
         <div class="glass-card">
             <h2><i class="fas fa-calendar-week"></i> Planificación Semanal</h2>
             <p style="margin-bottom: 20px; color: var(--text-secondary);">
-                ⏰ Introduce tu hora de entrada y, si quieres, una hora de salida manual. 
-                La columna "Salida calculada" te muestra a qué hora deberías salir para cumplir 40h semanales.
+                ⏰ Introduce tu hora de entrada. La "Salida calculada" te muestra a qué hora deberías salir.<br>
+                Si quieres fijar una hora manual, escríbela en "Salida (manual)".
             </p>
             
             <div style="margin-bottom: 25px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px;">
@@ -31,17 +31,16 @@
                 </label>
             </div>
 
-            <div style="overflow-x: auto;">
+            <div style="overflow-x: visible;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr style="border-bottom: 2px solid var(--accent);">
+                        <tr>
                             <th style="padding: 12px; text-align: left;">Día</th>
                             <th style="padding: 12px; text-align: center;">Entrada</th>
                             <th style="padding: 12px; text-align: center;">Salida (manual)</th>
                             <th style="padding: 12px; text-align: center;">Salida calculada</th>
                             <th style="padding: 12px; text-align: center;">Teletrabajo</th>
                             <th style="padding: 12px; text-align: center;">Vacaciones</th>
-                            <th style="padding: 12px; text-align: center;">Horas</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
@@ -49,7 +48,7 @@
             </div>
 
             <div class="weekly-summary" style="margin-top: 30px;">
-                <div class="result-box" style="background: linear-gradient(135deg, rgba(155,77,255,0.15), rgba(0,0,0,0.3));">
+                <div class="result-box">
                     <h3>Resumen Semanal</h3>
                     <p style="font-size: 1.2rem;">📊 Total acumulado: <strong id="totalWeekHours" style="color: var(--accent); font-size: 2rem;">0</strong> / 40 horas</p>
                     <p>⚖️ Te quedan: <strong id="weekDifference" style="color: var(--warning);">0</strong> horas</p>
