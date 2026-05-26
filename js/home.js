@@ -62,20 +62,41 @@ function calculateExitTimeForHome() {
     if (!today || now.getDay() === 6 || now.getDay() === 0) return 'Fin de semana';
     
     const dayIndex = dayNames.indexOf(today);
-    const startTime = (settings?.globalStartTime) || '08:30';
-    const dayConfig = settings?.[today] || {};
-    const actualStartTime = dayConfig.customStartTime || startTime;
+    const dayConfig = settings[today] || {};
+    const startTime = dayConfig.customStartTime || settings.globalStartTime || '08:30';
     
-    let workHours = 8;
     if (dayConfig.isVacation) return 'Vacaciones';
-    if (dayConfig.isTelework) workHours = dayIndex === 4 ? 8 : 9;
-    if (dayConfig.customHours) workHours = dayConfig.customHours;
+    if (dayConfig.isTelework) return 'Teletrabajo';
+    if (dayConfig.customExitTime) return dayConfig.customExitTime;
     
-    const [startHour, startMin] = actualStartTime.split(':').map(Number);
+    // Calcular minutos restantes para llegar a 40h
+    let realMinutes = 0;
+    for (let i = 0; i < now.getDay() - 1; i++) {
+        const dayId = dayNames[i];
+        const cfg = settings[dayId] || {};
+        const start = cfg.customStartTime || settings.globalStartTime || '08:30';
+        const exit = cfg.customExitTime;
+        
+        if (cfg.isVacation) realMinutes += 8 * 60;
+        else if (cfg.isTelework) realMinutes += (i === 4 ? 8 : 9) * 60;
+        else if (exit) {
+            const [sH, sM] = start.split(':').map(Number);
+            const [eH, eM] = exit.split(':').map(Number);
+            let worked = (eH * 60 + eM) - (sH * 60 + sM);
+            if (i !== 4 && worked > 30) worked -= 30;
+            realMinutes += Math.max(0, worked);
+        } else realMinutes += 8 * 60;
+    }
+    
+    const todayWorked = window.calculateTodayWorkedMinutes ? window.calculateTodayWorkedMinutes() : 0;
+    realMinutes += todayWorked;
+    
+    const remainingMinutes = Math.max(0, 40 * 60 - realMinutes);
+    const [sH, sM] = startTime.split(':').map(Number);
+    let totalMinutes = sH * 60 + sM + remainingMinutes;
     const hasLunch = dayIndex !== 4;
-    let totalMinutes = (startHour * 60 + startMin) + (workHours * 60) + (hasLunch ? 30 : 0);
-    const minExitMinutes = 16 * 60 + 30;
-    if (totalMinutes < minExitMinutes) totalMinutes = minExitMinutes;
+    if (hasLunch) totalMinutes += 30;
+    
     const exitHour = Math.floor(totalMinutes / 60);
     const exitMin = totalMinutes % 60;
     return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
