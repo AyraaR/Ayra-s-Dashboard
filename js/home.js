@@ -101,10 +101,9 @@ function calculateExitTimeForHome() {
     if (config.isTelework) return 'Teletrabajo';
     if (config.customExitTime) return config.customExitTime;
     
-    // Calcular minutos REALES trabajados esta semana (como hace la calculadora)
+    // Calcular minutos REALES trabajados esta semana
     let realMinutes = 0;
     
-    // Días anteriores completos
     for (let i = 0; i < now.getDay() - 1; i++) {
         const dayId = dayNames[i];
         const dayConfig = settings[dayId] || {};
@@ -115,36 +114,30 @@ function calculateExitTimeForHome() {
         } else if (dayConfig.isTelework) {
             realMinutes += (i === 4 ? 8 : 9) * 60;
         } else if (dayConfig.customExitTime) {
-            // Calcular minutos trabajados ese día
             const [sH, sM] = start.split(':').map(Number);
             const [eH, eM] = dayConfig.customExitTime.split(':').map(Number);
             let worked = (eH * 60 + eM) - (sH * 60 + sM);
-            const hasLunch = i !== 4;
-            if (hasLunch && worked > 30) worked -= 30;
+            if (i !== 4 && worked > 30) worked -= 30;
             realMinutes += Math.max(0, worked);
         } else {
             realMinutes += 8 * 60;
         }
     }
     
-    // Añadir minutos trabajados HOY hasta ahora
-    const todayWorked = window.calculateTodayWorkedMinutes ? window.calculateTodayWorkedMinutes() : 0;
+    // Añadir minutos trabajados HOY
+    const todayWorked = window.getTodayWorkedMinutes ? window.getTodayWorkedMinutes() : 0;
     realMinutes += todayWorked;
     
-    // Minutos que faltan para llegar a 40h (2400 minutos)
+    // Minutos que faltan
     let remainingMinutes = 2400 - realMinutes;
     if (remainingMinutes < 0) remainingMinutes = 0;
     
-    // Calcular hora de salida: entrada + minutos restantes + comida (si no es viernes)
+    // Calcular hora de salida
     const [startHour, startMin] = startTime.split(':').map(Number);
     let totalMinutes = startHour * 60 + startMin + remainingMinutes;
     
     const hasLunch = dayIndex !== 4;
     if (hasLunch) totalMinutes += 30;
-    
-    // Aplicar mínimo 16:30
-    const MIN_EXIT = 16 * 60 + 30;
-    if (totalMinutes < MIN_EXIT) totalMinutes = MIN_EXIT;
     
     const exitHour = Math.floor(totalMinutes / 60);
     const exitMin = totalMinutes % 60;

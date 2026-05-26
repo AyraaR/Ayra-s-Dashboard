@@ -38,7 +38,7 @@ function saveSettings() {
 }
 
 function getFixedTeleworkMinutes(dayIndex) {
-    return dayIndex === 4 ? 8 * 60 : 9 * 60;
+    return dayIndex === 4 ? 480 : 540; // 8h = 480min, 9h = 540min
 }
 
 function getCurrentDayIndex() {
@@ -60,192 +60,55 @@ function minutesToTime(minutes) {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
 
-function calculateWorkedMinutes(startTime, exitTime, dayIndex) {
+// Calcular minutos trabajados en un día (restando 30min de comida excepto viernes)
+function calcWorkedMinutes(startTime, exitTime, dayIndex) {
     const start = timeToMinutes(startTime);
     const exit = timeToMinutes(exitTime);
     if (start === null || exit === null) return null;
-    
     let worked = exit - start;
     const hasLunch = dayIndex !== 4;
     if (hasLunch && worked > 30) worked -= 30;
     return Math.max(0, worked);
 }
 
-function calculateExitFromMinutes(startTime, workedMinutes, dayIndex) {
+// Calcular hora de salida desde minutos trabajados (sumando comida)
+function calcExitFromWorked(startTime, workedMinutes, dayIndex) {
     const start = timeToMinutes(startTime);
     if (start === null || workedMinutes === null) return null;
-    
     let total = start + workedMinutes;
     const hasLunch = dayIndex !== 4;
     if (hasLunch) total += 30;
-    
-    const MIN_EXIT = 16 * 60 + 30;
-    if (total < MIN_EXIT) total = MIN_EXIT;
     return minutesToTime(total);
 }
 
-// Calcular minutos REALES trabajados en días pasados
-function calculateRealPastMinutes() {
+// MINUTOS REALES TRABAJADOS EN DÍAS PASADOS
+function getRealPastMinutes() {
     const currentDayIdx = getCurrentDayIndex();
     let total = 0;
     
     for (let i = 0; i <= currentDayIdx; i++) {
         const day = days[i];
-        const config = currentSettings[day.id] || {};
-        const start = config.customStartTime || currentSettings.globalStartTime;
+        const cfg = currentSettings[day.id] || {};
+        const start = cfg.customStartTime || currentSettings.globalStartTime;
         
-        if (config.isVacation) {
-            total += 8 * 60;
-        } else if (config.isTelework) {
+        if (cfg.isVacation) {
+            total += 480; // 8h
+        } else if (cfg.isTelework) {
             total += getFixedTeleworkMinutes(i);
-        } else if (config.customExitTime) {
-            const worked = calculateWorkedMinutes(start, config.customExitTime, i);
-            total += worked !== null ? worked : 8 * 60;
+        } else if (cfg.customExitTime) {
+            const worked = calcWorkedMinutes(start, cfg.customExitTime, i);
+            total += worked !== null ? worked : 480;
         } else if (i < currentDayIdx) {
-            total += 8 * 60;
+            total += 480;
         } else if (i === currentDayIdx) {
-            total += calculateTodayWorkedMinutes();
+            total += getTodayWorkedMinutes();
         }
     }
     return total;
 }
 
-// Calcular minutos para días FUTUROS
-function calculateFutureMinutes() {
-    const result = {};
-    const currentDayIdx = getCurrentDayIndex();
-    const pastMinutes = calculateRealPastMinutes();
-    let remainingMinutes = 40 * 60 - pastMinutes;
-    
-    // Primero identificar días flexibles
-    const flexibleDays = [];
-    for (let i = currentDayIdx + 1; i < days.length; i++) {
-        const day = days[i];
-        const config = currentSettings[day.id] || {};
-        
-        if (config.isVacation) {
-            remainingMinutes -= 8 * 60;
-            result[day.id] = 8 * 60;
-        } else if (config.isTelework) {
-            const minutes = getFixedTeleworkMinutes(i);
-            remainingMinutes -= minutes;
-            result[day.id] = minutes;
-        } else if (config.isManualExit && config.customExitTime) {
-            const start = config.customStartTime || currentSettings.globalStartTime;
-            const minutes = calculateWorkedMinutes(start, config.customExitTime, i);
-            if (minutes !== null) {
-                remainingMinutes -= minutes;
-                result[day.id] = minutes;
-            } else {
-                flexibleDays.push(day);
-            }
-        } else {
-            flexibleDays.push(day);
-        }
-    }
-    
-    if (flexibleDays.length === 0 || remainingMinutes <= 0) {
-        return result;
-    }
-    
-    // Buscar una hora de salida común para todos los días flexibles
-    // Probamos desde 16:30 hasta 18:00
-    let bestExitTime = null;
-    let bestDiff = Infinity;
-    let bestMinutes = [];
-    
-    for (let exitMinute = 16 * 60 + 30; exitMinute <= 18 * 60; exitMinute++) {
-        const testExit = minutesToTime(exitMinute);
-        let totalTest = 0;
-        let valid = true;
-        const dayMinutes = [];
-        
-        for (const day of flexibleDays) {
-            const start = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
-            const worked = calculateWorkedMinutes(start, testExit, day.index);
-            if (worked === null || worked < 0) {
-                valid = false;
-                break;
-            }
-            dayMinutes.push(worked);
-            totalTest += worked;
-        }
-        
-        if (valid) {
-            const diff = Math.abs(totalTest - remainingMinutes);
-            if (diff < bestDiff) {
-                bestDiff = diff;
-                bestExitTime = testExit;
-                bestMinutes = dayMinutes;
-            }
-        }
-    }
-    
-    if (bestExitTime) {
-        // Ajustar la diferencia en el último día
-        let totalAssigned = bestMinutes.reduce((a, b) => a + b, 0);
-        const diff = remainingMinutes - totalAssigned;
-        
-        for (let i = 0; i < flexibleDays.length; i++) {
-            let assigned = bestMinutes[i];
-            if (i === flexibleDays.length - 1 && Math.abs(diff) > 0) {
-                assigned += diff;
-            }
-            result[flexibleDays[i].id] = Math.round(assigned);
-        }
-    } else {
-        // Fallback: reparto equitativo
-        const minutesPerDay = remainingMinutes / flexibleDays.length;
-        let totalAssigned = 0;
-        for (let i = 0; i < flexibleDays.length; i++) {
-            const day = flexibleDays[i];
-            let assigned = minutesPerDay;
-            if (i === flexibleDays.length - 1) {
-                assigned = remainingMinutes - totalAssigned;
-            }
-            result[day.id] = Math.round(assigned);
-            totalAssigned += assigned;
-        }
-    }
-    
-    return result;
-}
-
-function getDayMinutes(dayId, dayIndex) {
-    const config = currentSettings[dayId];
-    const currentDayIdx = getCurrentDayIndex();
-    const start = config?.customStartTime || currentSettings.globalStartTime;
-    
-    if (config?.isVacation) return 8 * 60;
-    if (config?.isTelework) return getFixedTeleworkMinutes(dayIndex);
-    
-    // Días pasados o con manual
-    if (dayIndex <= currentDayIdx || config?.isManualExit) {
-        if (config?.customExitTime) {
-            const worked = calculateWorkedMinutes(start, config.customExitTime, dayIndex);
-            if (worked !== null) return worked;
-        }
-        if (dayIndex === currentDayIdx) return calculateTodayWorkedMinutes();
-        return 8 * 60;
-    }
-    
-    const future = calculateFutureMinutes();
-    return future[dayId] !== undefined ? future[dayId] : 8 * 60;
-}
-
-function getCalculatedExit(dayId, dayIndex) {
-    const config = currentSettings[dayId];
-    const start = config?.customStartTime || currentSettings.globalStartTime;
-    const minutes = getDayMinutes(dayId, dayIndex);
-    
-    if (config?.isVacation) return 'Vacaciones';
-    if (config?.isTelework) return 'Teletrabajo';
-    if (config?.customExitTime) return config.customExitTime;
-    
-    return calculateExitFromMinutes(start, minutes, dayIndex) || '--:--';
-}
-
-function calculateTodayWorkedMinutes() {
+// MINUTOS TRABAJADOS HOY (hasta ahora)
+function getTodayWorkedMinutes() {
     const userData = getUserData();
     if (!userData) return 0;
     const settings = userData.workSettings || {};
@@ -255,9 +118,9 @@ function calculateTodayWorkedMinutes() {
     if (!today || now.getDay() === 6 || now.getDay() === 0) return 0;
     
     const dayIndex = dayNames.indexOf(today);
-    const config = settings[today] || {};
-    const start = config.customStartTime || settings.globalStartTime || '08:30';
-    const exit = config.customExitTime;
+    const cfg = settings[today] || {};
+    const start = cfg.customStartTime || settings.globalStartTime || '08:30';
+    const exit = cfg.customExitTime;
     
     const startMin = timeToMinutes(start);
     if (startMin === null) return 0;
@@ -277,6 +140,137 @@ function calculateTodayWorkedMinutes() {
     return Math.max(0, worked);
 }
 
+// Calcular minutos para días FUTUROS - BUSCANDO MISMA HORA DE SALIDA
+function getFutureMinutes() {
+    const result = {};
+    const currentDayIdx = getCurrentDayIndex();
+    let remainingMinutes = 2400 - getRealPastMinutes(); // 2400 = 40h
+    
+    // Primero, identificar días flexibles futuros
+    const flexibleDays = [];
+    for (let i = currentDayIdx + 1; i < days.length; i++) {
+        const day = days[i];
+        const cfg = currentSettings[day.id] || {};
+        
+        if (cfg.isVacation) {
+            remainingMinutes -= 480;
+            result[day.id] = 480;
+        } else if (cfg.isTelework) {
+            const mins = getFixedTeleworkMinutes(i);
+            remainingMinutes -= mins;
+            result[day.id] = mins;
+        } else if (cfg.isManualExit && cfg.customExitTime) {
+            const start = cfg.customStartTime || currentSettings.globalStartTime;
+            const mins = calcWorkedMinutes(start, cfg.customExitTime, i);
+            if (mins !== null) {
+                remainingMinutes -= mins;
+                result[day.id] = mins;
+            } else {
+                flexibleDays.push(day);
+            }
+        } else {
+            flexibleDays.push(day);
+        }
+    }
+    
+    if (flexibleDays.length === 0) return result;
+    if (remainingMinutes <= 0) return result;
+    
+    // Buscar una hora de salida común que cumpla exactamente las horas restantes
+    // Probamos cada minuto desde 16:30 hasta 18:00
+    let bestExit = null;
+    let bestDiff = Infinity;
+    let bestWorked = [];
+    
+    for (let exitMin = 990; exitMin <= 1080; exitMin++) { // 16:30 = 990, 18:00 = 1080
+        let total = 0;
+        let valid = true;
+        const workedMins = [];
+        
+        for (const day of flexibleDays) {
+            const start = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
+            const worked = calcWorkedMinutes(start, minutesToTime(exitMin), day.index);
+            if (worked === null || worked < 0) {
+                valid = false;
+                break;
+            }
+            workedMins.push(worked);
+            total += worked;
+        }
+        
+        if (valid) {
+            const diff = Math.abs(total - remainingMinutes);
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                bestExit = exitMin;
+                bestWorked = [...workedMins];
+            }
+        }
+    }
+    
+    if (bestExit !== null && bestDiff < 10) { // menos de 10 minutos de error
+        // Ajustar el último día para compensar la diferencia exacta
+        let totalAssigned = bestWorked.reduce((a, b) => a + b, 0);
+        const diff = remainingMinutes - totalAssigned;
+        
+        for (let i = 0; i < flexibleDays.length; i++) {
+            let mins = bestWorked[i];
+            if (i === flexibleDays.length - 1 && Math.abs(diff) > 0) {
+                mins = Math.max(0, mins + diff);
+            }
+            result[flexibleDays[i].id] = Math.round(mins);
+        }
+    } else {
+        // Fallback: reparto equitativo
+        const minsPerDay = remainingMinutes / flexibleDays.length;
+        let totalAssigned = 0;
+        for (let i = 0; i < flexibleDays.length; i++) {
+            const day = flexibleDays[i];
+            let mins = minsPerDay;
+            if (i === flexibleDays.length - 1) {
+                mins = remainingMinutes - totalAssigned;
+            }
+            result[day.id] = Math.round(mins);
+            totalAssigned += mins;
+        }
+    }
+    
+    return result;
+}
+
+function getDayMinutes(dayId, dayIndex) {
+    const cfg = currentSettings[dayId];
+    const currentDayIdx = getCurrentDayIndex();
+    const start = cfg?.customStartTime || currentSettings.globalStartTime;
+    
+    if (cfg?.isVacation) return 480;
+    if (cfg?.isTelework) return getFixedTeleworkMinutes(dayIndex);
+    
+    if (dayIndex <= currentDayIdx || cfg?.isManualExit) {
+        if (cfg?.customExitTime) {
+            const mins = calcWorkedMinutes(start, cfg.customExitTime, dayIndex);
+            if (mins !== null) return mins;
+        }
+        if (dayIndex === currentDayIdx) return getTodayWorkedMinutes();
+        return 480;
+    }
+    
+    const future = getFutureMinutes();
+    return future[dayId] !== undefined ? future[dayId] : 480;
+}
+
+function getCalculatedExit(dayId, dayIndex) {
+    const cfg = currentSettings[dayId];
+    const start = cfg?.customStartTime || currentSettings.globalStartTime;
+    const mins = getDayMinutes(dayId, dayIndex);
+    
+    if (cfg?.isVacation) return 'Vacaciones';
+    if (cfg?.isTelework) return 'Teletrabajo';
+    if (cfg?.customExitTime) return cfg.customExitTime;
+    
+    return calcExitFromWorked(start, mins, dayIndex) || '--:--';
+}
+
 function renderTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
@@ -286,48 +280,48 @@ function renderTable() {
     
     for (let i = 0; i < days.length; i++) {
         const day = days[i];
-        const config = currentSettings[day.id] || {};
-        const isTelework = config.isTelework || false;
-        const isVacation = config.isVacation || false;
-        const start = config.customStartTime || currentSettings.globalStartTime;
+        const cfg = currentSettings[day.id] || {};
+        const isTelework = cfg.isTelework || false;
+        const isVacation = cfg.isVacation || false;
+        const start = cfg.customStartTime || currentSettings.globalStartTime;
         const isPastDay = day.index < currentDayIdx;
         const isToday = day.index === currentDayIdx;
         
-        const minutes = getDayMinutes(day.id, day.index);
-        const hoursDisplay = `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
+        const mins = getDayMinutes(day.id, day.index);
+        const hoursDisplay = `${Math.floor(mins / 60)}h ${mins % 60}min`;
         const calculatedExit = getCalculatedExit(day.id, day.index);
-        const manualExit = config.customExitTime || '';
+        const manualExit = cfg.customExitTime || '';
         
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid var(--glass-border)';
         row.innerHTML = `
             <td style="padding: 12px;">
                 <strong>${day.name}</strong>
-                ${isPastDay ? '<br><small>✅ pasado</small>' : ''}
-                ${isToday ? '<br><small>📅 hoy</small>' : ''}
-                ${config.isManualExit ? '<br><small>✏️ manual</small>' : ''}
-                ${isVacation ? '<br><small>🌴 vacaciones</small>' : ''}
-                ${isTelework ? '<br><small>🏠 teletrabajo</small>' : ''}
-                <br><small>${hoursDisplay}</small>
+                ${isPastDay ? '<br><small style="color: #888;">✅ pasado</small>' : ''}
+                ${isToday ? '<br><small style="color: var(--accent);">📅 hoy</small>' : ''}
+                ${cfg.isManualExit ? '<br><small style="color: #4cd964;">✏️ manual</small>' : ''}
+                ${isVacation ? '<br><small style="color: #ffcc00;">🌴 vacaciones</small>' : ''}
+                ${isTelework ? '<br><small style="color: #4cd964;">🏠 teletrabajo</small>' : ''}
+                <br><small style="color: var(--accent);">${hoursDisplay}</small>
             </td>
             <td style="padding: 12px; text-align: center;">
                 ${!isTelework && !isVacation ? 
-                    `<input type="time" class="startInput" data-day="${day.id}" value="${start}" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 20px; padding: 6px 10px; width: 110px;">` : 
-                    '<span>---</span>'}
+                    `<input type="time" class="startInput" data-day="${day.id}" value="${start}" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 10px; color: white; width: 110px;">` : 
+                    '<span style="color: #888;">---</span>'}
                 </td>
             <td style="padding: 12px; text-align: center;">
                 ${!isTelework && !isVacation ? 
-                    `<input type="time" class="exitInput" data-day="${day.id}" value="${manualExit}" placeholder="─" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 20px; padding: 6px 10px; width: 110px;">` : 
-                    '<span>---</span>'}
+                    `<input type="time" class="exitInput" data-day="${day.id}" value="${manualExit}" placeholder="─" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 10px; color: white; width: 110px;">` : 
+                    '<span style="color: #888;">---</span>'}
                 </td>
             <td style="padding: 12px; text-align: center;">
-                <strong>${calculatedExit}</strong>
+                <strong style="color: #5e5ce0;">${calculatedExit}</strong>
                 </td>
             <td style="padding: 12px; text-align: center;">
-                <input type="checkbox" class="teleworkCheck" data-day="${day.id}" ${isTelework ? 'checked' : ''} ${isVacation ? 'disabled' : ''}>
+                <input type="checkbox" class="teleworkCheck" data-day="${day.id}" ${isTelework ? 'checked' : ''} ${isVacation ? 'disabled' : ''} style="accent-color: var(--accent);">
                 </td>
             <td style="padding: 12px; text-align: center;">
-                <input type="checkbox" class="vacationCheck" data-day="${day.id}" ${isVacation ? 'checked' : ''} ${isTelework ? 'disabled' : ''}>
+                <input type="checkbox" class="vacationCheck" data-day="${day.id}" ${isVacation ? 'checked' : ''} ${isTelework ? 'disabled' : ''} style="accent-color: var(--accent);">
                 </td>
         `;
         tbody.appendChild(row);
@@ -406,9 +400,9 @@ function handleVacationChange(e) {
 }
 
 function updateSummary() {
-    const totalMinutes = calculateRealPastMinutes();
-    const remainingMinutes = Math.max(0, 40 * 60 - totalMinutes);
-    const percent = Math.min(100, (totalMinutes / (40 * 60)) * 100);
+    const totalMinutes = getRealPastMinutes();
+    const remainingMinutes = Math.max(0, 2400 - totalMinutes);
+    const percent = Math.min(100, (totalMinutes / 2400) * 100);
     
     const totalSpan = document.getElementById('totalWeekHours');
     const diffSpan = document.getElementById('weekDifference');
@@ -445,7 +439,7 @@ function recalculateAll() {
 
 function saveAll() {
     saveSettings();
-    alert('Configuración guardada');
+    showToast('💾 Configuración guardada');
 }
 
 function initDockActive() {
@@ -471,5 +465,5 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logoutBtn')?.addEventListener('click', () => logoutUser());
 });
 
-window.calculateTodayWorkedMinutes = calculateTodayWorkedMinutes;
+window.getTodayWorkedMinutes = getTodayWorkedMinutes;
 window.updateSummary = updateSummary;
