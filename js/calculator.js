@@ -61,7 +61,7 @@ function calculateHoursFromTimes(startTime, exitTime, dayIndex) {
 
 // Calcular hora de salida desde horas trabajadas
 function calculateExitTimeFromHours(startTime, hours, dayIndex) {
-    if (!startTime || hours <= 0) return null;
+    if (!startTime || hours === null || hours <= 0) return null;
     const [sH, sM] = startTime.split(':').map(Number);
     const hasLunch = dayIndex !== 4;
     let totalMinutes = (sH * 60 + sM) + (hours * 60);
@@ -71,67 +71,81 @@ function calculateExitTimeFromHours(startTime, hours, dayIndex) {
     return `${exitHour.toString().padStart(2, '0')}:${exitMin.toString().padStart(2, '0')}`;
 }
 
-// Calcular distribución de horas basada en salidas manuales
-function calculateDistributionFromExits() {
-    const fixedTotal = 0;
-    const flexibleDays = [];
-    const exitTimes = {};
+// Función principal: calcula todas las horas de la semana basado en salidas manuales
+function calculateAllHours() {
+    const result = {};
+    const fixedHours = {}; // Horas fijas por día (vacaciones, teletrabajo)
+    let totalFixed = 0;
+    const manualDays = []; // Días con salida manual
+    const flexibleDays = []; // Días sin salida manual
     
-    // Primera pasada: identificar días flexibles
-    for (let i = 0; i < days.length; i++) {
-        const day = days[i];
+    // Primera pasada: identificar días fijos y días con salida manual
+    for (const day of days) {
         const dayConfig = currentSettings[day.id] || {};
+        const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
         
         if (dayConfig.isVacation) {
-            exitTimes[day.id] = 'Vacaciones';
+            fixedHours[day.id] = 8;
+            totalFixed += 8;
+            result[day.id] = 8;
         } else if (dayConfig.isTelework) {
-            exitTimes[day.id] = 'Teletrabajo';
+            const hours = getFixedTeleworkHours(day.index);
+            fixedHours[day.id] = hours;
+            totalFixed += hours;
+            result[day.id] = hours;
         } else if (dayConfig.customExitTime) {
-            exitTimes[day.id] = dayConfig.customExitTime;
+            // Día con salida manual
+            const hours = calculateHoursFromTimes(startTime, dayConfig.customExitTime, day.index);
+            if (hours !== null) {
+                fixedHours[day.id] = hours;
+                totalFixed += hours;
+                result[day.id] = hours;
+                manualDays.push(day);
+            } else {
+                flexibleDays.push(day);
+            }
         } else {
             flexibleDays.push(day);
-            exitTimes[day.id] = null;
         }
     }
     
-    // Para días flexibles, calcular automáticamente
-    flexibleDays.forEach(day => {
-        const startTime = currentSettings[day.id]?.customStartTime || currentSettings.globalStartTime;
-        // Por defecto 8 horas
-        const exitTime = calculateExitTimeFromHours(startTime, 8, day.index);
-        exitTimes[day.id] = exitTime;
-    });
+    const remainingHours = 40 - totalFixed;
     
-    return exitTimes;
+    if (flexibleDays.length > 0 && remainingHours > 0) {
+        const hoursPerDay = remainingHours / flexibleDays.length;
+        for (const day of flexibleDays) {
+            const rounded = Math.round(hoursPerDay * 10) / 10;
+            result[day.id] = rounded;
+        }
+    } else if (flexibleDays.length > 0) {
+        for (const day of flexibleDays) {
+            result[day.id] = 0;
+        }
+    }
+    
+    return result;
 }
 
 function getDayHours(dayId, dayIndex) {
     const dayConfig = currentSettings[dayId];
-    const startTime = dayConfig?.customStartTime || currentSettings.globalStartTime;
-    const exitTime = dayConfig?.customExitTime;
     
     if (dayConfig?.isVacation) return 8;
     if (dayConfig?.isTelework) return getFixedTeleworkHours(dayIndex);
     if (dayConfig?.customHours) return dayConfig.customHours;
     
-    // Si tiene salida manual, calcular horas desde salida
-    if (exitTime) {
-        const hours = calculateHoursFromTimes(startTime, exitTime, dayIndex);
-        if (hours !== null) return hours;
-    }
-    
-    return 8;
+    const allHours = calculateAllHours();
+    return allHours[dayId] || 8;
 }
 
 function getDayExitTime(dayId, dayIndex) {
     const dayConfig = currentSettings[dayId];
     const startTime = dayConfig?.customStartTime || currentSettings.globalStartTime;
-    const exitTime = dayConfig?.customExitTime;
+    const customExit = dayConfig?.customExitTime;
     const hours = getDayHours(dayId, dayIndex);
     
     if (dayConfig?.isVacation) return 'Vacaciones';
     if (dayConfig?.isTelework) return 'Teletrabajo';
-    if (exitTime) return exitTime;
+    if (customExit) return customExit;
     
     return calculateExitTimeFromHours(startTime, hours, dayIndex) || '--:--';
 }
@@ -230,7 +244,9 @@ function handleExitTimeChange(e) {
     
     if (exitTime) {
         currentSettings[day].customExitTime = exitTime;
-        showToast(`⏰ Salida manual para ${days.find(d => d.id === day).name} establecida`);
+        // Limpiar cualquier hora personalizada que pudiera interferir
+        delete currentSettings[day].customHours;
+        showToast(`⏰ Salida manual para ${days.find(d => d.id === day).name}: ${exitTime}`);
     } else {
         delete currentSettings[day].customExitTime;
         showToast(`🔄 Salida automática restaurada para ${days.find(d => d.id === day).name}`);
@@ -283,30 +299,28 @@ function calculateTodayHoursReal() {
     const startTime = dayConfig.customStartTime || settings.globalStartTime || '08:30';
     const exitTime = dayConfig.customExitTime;
     
-    // Si hay salida manual, calcular horas hasta ahora (sin pasar la salida)
-    if (exitTime) {
-        const [sH, sM] = startTime.split(':').map(Number);
-        const [eH, eM] = exitTime.split(':').map(Number);
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
-        const startMinutes = sH * 60 + sM;
-        const exitMinutes = eH * 60 + eM;
-        let workedMinutes = Math.min(nowMinutes - startMinutes, exitMinutes - startMinutes);
-        const hasLunch = dayIndex !== 4;
-        if (hasLunch && workedMinutes > 30) workedMinutes -= 30;
-        return Math.max(0, Math.min(workedMinutes / 60, 12));
-    }
-    
     const [startHour, startMin] = startTime.split(':').map(Number);
     const currentHour = now.getHours();
     const currentMin = now.getMinutes();
     
     if (currentHour < startHour || (currentHour === startHour && currentMin < startMin)) return 0;
     
-    let workedMinutes = (currentHour - startHour) * 60 + (currentMin - startMin);
+    let endHour = currentHour;
+    let endMin = currentMin;
+    
+    if (exitTime) {
+        const [eH, eM] = exitTime.split(':').map(Number);
+        if (currentHour > eH || (currentHour === eH && currentMin > eM)) {
+            endHour = eH;
+            endMin = eM;
+        }
+    }
+    
+    let workedMinutes = (endHour - startHour) * 60 + (endMin - startMin);
     const hasLunch = dayIndex !== 4;
     if (hasLunch && workedMinutes > 30) workedMinutes -= 30;
     
-    return Math.max(0, workedMinutes / 60);
+    return Math.max(0, Math.min(workedMinutes / 60, 12));
 }
 
 function updateSummary() {
@@ -320,12 +334,19 @@ function updateSummary() {
         if (dayConfig.isVacation) accumulated += 8;
         else if (dayConfig.isTelework) accumulated += i === 4 ? 8 : 9;
         else if (dayConfig.customHours) accumulated += dayConfig.customHours;
-        else accumulated += 8;
+        else if (dayConfig.customExitTime) {
+            const startTime = dayConfig.customStartTime || currentSettings.globalStartTime;
+            const hours = calculateHoursFromTimes(startTime, dayConfig.customExitTime, i);
+            if (hours !== null) accumulated += hours;
+            else accumulated += 8;
+        } else {
+            accumulated += 8;
+        }
     }
     accumulated += calculateTodayHoursReal();
     accumulated = Math.round(accumulated * 10) / 10;
     
-    // Calcular total planificado para la semana
+    // Calcular total planificado para la semana (lo que dice la tabla)
     let plannedTotal = 0;
     days.forEach((day, idx) => {
         plannedTotal += getDayHours(day.id, idx);
@@ -371,15 +392,15 @@ function applyGlobalTime() {
 }
 
 function recalculateAll() {
-    // Limpiar horas calculadas y recalcular
+    // Limpiar todas las salidas manuales
     days.forEach(day => {
         if (currentSettings[day.id]) {
-            // No borramos customExitTime para mantener las salidas manuales
+            delete currentSettings[day.id].customExitTime;
         }
     });
     renderTable();
     updateSummary();
-    showToast('🔄 Horas recalculadas');
+    showToast('🔄 Todas las horas recalculadas automáticamente');
 }
 
 function saveAll() {
